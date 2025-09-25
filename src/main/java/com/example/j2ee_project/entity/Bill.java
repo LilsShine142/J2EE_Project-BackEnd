@@ -1,0 +1,55 @@
+package com.example.j2ee_project.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.math.BigDecimal;
+
+@Data
+@Entity
+@Table(name = "bills")
+public class Bill {
+    @Id
+    @Column(name = "billid")
+    private Integer billID;
+
+    @ManyToOne
+    @JoinColumn(name = "userid")
+    private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "tableid")
+    private RestaurantTable table;
+
+    @Column(name = "billdate", nullable = false)
+    private LocalDate billDate;
+
+    @Column(name = "mealtotal", precision = 10, scale = 2)
+    private BigDecimal mealTotal = BigDecimal.ZERO;
+
+    @ManyToOne
+    @JoinColumn(name = "vouchercode")
+    private Voucher voucher;
+
+    @Column(name = "discountamount", precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(name = "totalamount", precision = 10, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    @Column(name = "status", length = 20)
+    private String status;
+
+    @Column(name = "paymentmethod", length = 20)
+    private String paymentMethod;
+
+    @Column(name = "paymenttime")
+    private LocalDateTime paymentTime;
+
+    @Column(name = "initialpayment", precision = 10, scale = 2)
+    private BigDecimal initialPayment = BigDecimal.ZERO;
+
+    @Column(name = "remainingamount", precision = 10, scale = 2)
+    private BigDecimal remainingAmount = BigDecimal.ZERO;
+}
