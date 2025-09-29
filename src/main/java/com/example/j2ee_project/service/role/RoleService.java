@@ -67,8 +67,8 @@ public class RoleService {
             existingRole.setRoleName(role.getRoleName());
         }
 
-        if (role.getRoleDescription() != null) {
-            existingRole.setRoleDescription(role.getRoleDescription());
+        if (role.getDescription() != null) {
+            existingRole.setDescription(role.getDescription());
         }
 
         existingRole.setUpdatedAt(LocalDateTime.now());
@@ -117,7 +117,7 @@ public class RoleService {
             if (!roleRepository.existsByRoleName("USER")) {
                 createRole(Role.builder()
                         .roleName("USER")
-                        .roleDescription("Standard user role")
+                        .description("Standard user role")
                         // .isDefault(true)
                         .build());
                 System.out.println("✅ Created default USER role");
@@ -126,7 +126,7 @@ public class RoleService {
             if (!roleRepository.existsByRoleName("ADMIN")) {
                 createRole(Role.builder()
                         .roleName("ADMIN")
-                        .roleDescription("Administrator role")
+                        .description("Administrator role")
                         // .isDefault(false)
                         .build());
                 System.out.println("✅ Created ADMIN role");

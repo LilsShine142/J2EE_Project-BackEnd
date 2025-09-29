@@ -20,7 +20,7 @@ public class Bill {
 
     @ManyToOne
     @JoinColumn(name = "tableid")
-    private RestaurantTable table;
+    private RestaurantTable restaurantTable;
 
     @Column(name = "billdate", nullable = false)
     private LocalDate billDate;
@@ -38,9 +38,6 @@ public class Bill {
     @Column(name = "totalamount", precision = 10, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    @Column(name = "status", length = 20)
-    private String status;
-
     @Column(name = "paymentmethod", length = 20)
     private String paymentMethod;
 
@@ -52,4 +49,15 @@ public class Bill {
 
     @Column(name = "remainingamount", precision = 10, scale = 2)
     private BigDecimal remainingAmount = BigDecimal.ZERO;
+
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "statusid", nullable = false)
+    private Status status; // FK đến bảng statuses
+
 }

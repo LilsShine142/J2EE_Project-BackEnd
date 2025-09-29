@@ -2,7 +2,10 @@ package com.example.j2ee_project.entity.keys;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 
 @Embeddable
@@ -10,9 +13,11 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KeyBookingDetailId implements Serializable {
+    
     @Column(name = "bookingid")
     private Integer bookingID;
 
     @Column(name = "mealid")
     private Integer mealID;
+
 }

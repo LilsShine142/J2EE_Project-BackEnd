@@ -20,7 +20,7 @@ public class UserDTO {
     private String email;
     private String fullName;
     private String phoneNumber;
-    private String status; // Unverified / Active
+    private Integer statusId;
     private String statusWork; // Tình trạng công việc
     private BigDecimal totalSpent;
     private Integer loyaltyPoints;

@@ -2,11 +2,14 @@ package com.example.j2ee_project.service.user;
 
 import com.example.j2ee_project.model.dto.UserDTO;
 import com.example.j2ee_project.model.request.user.UserRequest;
+import com.example.j2ee_project.entity.Status;
 import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.DuplicateResourceException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.repository.UserRepository;
+import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.service.role.RoleService;
+import com.example.j2ee_project.utils._enum.EStatus;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -19,6 +22,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
@@ -34,12 +38,15 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final RoleService roleService;
+    private final StatusRepository statusRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, RoleService roleService) {
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, RoleService roleService,
+            StatusRepository statusRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.roleService = roleService;
+        this.statusRepository = statusRepository;
     }
 
     public UserDTO createUser(UserRequest userRequest) {
@@ -54,6 +61,10 @@ public class UserService implements UserDetailsService {
             throw new DuplicateResourceException("Số điện thoại đã tồn tại");
         }
 
+        Status status = statusRepository.findById(userRequest.getStatusId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy trạng thái với ID: " + userRequest.getStatusId()));
+
         User user = new User();
         user.setUsername(userRequest.getUsername());
         user.setEmail(userRequest.getEmail());
@@ -64,6 +75,7 @@ public class UserService implements UserDetailsService {
         user.setTotalSpent(java.math.BigDecimal.valueOf(0.0));
         user.setLoyaltyPoints(0);
         user.setStatusWork(userRequest.getStatusWork());
+        user.setStatus(status);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -84,9 +96,6 @@ public class UserService implements UserDetailsService {
         } else {
             user.setJoinDate(LocalDateTime.now());
         }
-
-        // Status mặc định: "Unverified"
-        user.setStatus(userRequest.getStatus() != null ? userRequest.getStatus() : "Unverified");
 
         user = userRepository.save(user);
         return mapToUserDTO(user);
@@ -135,6 +144,10 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
 
+        Status status = statusRepository.findById(userDTO.getStatusId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy trạng thái với ID: " + userDTO.getStatusId()));
+
         if (userDTO.getUsername() != null && !userDTO.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(userDTO.getUsername())) {
                 throw new DuplicateResourceException("Tên đăng nhập đã tồn tại");
@@ -155,8 +168,8 @@ public class UserService implements UserDetailsService {
             user.setPhoneNumber(userDTO.getPhoneNumber());
         if (userDTO.getRoleId() != null)
             user.setRoleId(userDTO.getRoleId());
-        if (userDTO.getStatus() != null)
-            user.setStatus(userDTO.getStatus());
+        if (userDTO.getStatusId() != null)
+            user.setStatus(status);
         if (userDTO.getStatusWork() != null)
             user.setStatusWork(userDTO.getStatusWork());
         if (userDTO.getTotalSpent() != null)
@@ -185,7 +198,7 @@ public class UserService implements UserDetailsService {
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
                 .roleId(user.getRoleId())
-                .status(user.getStatus())
+                .statusId(user.getStatus().getStatusID())
                 .statusWork(user.getStatusWork())
                 .totalSpent(user.getTotalSpent())
                 .loyaltyPoints(user.getLoyaltyPoints())
@@ -200,7 +213,7 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng: " + username));
 
         // Nếu user có status = "Inactive" thì disable
-        if ("Inactive".equalsIgnoreCase(user.getStatus())) {
+        if (EStatus.INACTIVE.equals(user.getStatus())) {
             throw new DisabledException("Tài khoản đã bị vô hiệu hóa");
         }
 
@@ -225,7 +238,7 @@ public class UserService implements UserDetailsService {
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled("Inactive".equalsIgnoreCase(user.getStatus()))
+                .disabled(EStatus.INACTIVE.equals(user.getStatus().getStatusName()))
                 .build();
     }
 }

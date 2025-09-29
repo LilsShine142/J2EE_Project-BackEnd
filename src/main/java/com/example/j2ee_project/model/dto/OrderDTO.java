@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public class OrderDTO {
     private Integer orderID;
     private Integer userID;
+    private Integer bookingID;
     private String userName;
     private Integer tableID;
     private String tableName;

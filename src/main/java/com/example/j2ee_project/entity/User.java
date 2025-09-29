@@ -9,6 +9,11 @@ import java.util.List;
 
 @Data
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Table(name = "users")
 public class User {
     @Id
@@ -31,8 +36,9 @@ public class User {
     @Column(name = "verifycode", length = 10)
     private String verifyCode;
 
-    @Column(name = "status", length = 10)
-    private String status = "Unverified";
+    @ManyToOne
+    @JoinColumn(name = "statusid")
+    private Status status; // FK đến bảng statuses
 
     @Column(name = "fullname", nullable = false, length = 50)
     private String fullName;
