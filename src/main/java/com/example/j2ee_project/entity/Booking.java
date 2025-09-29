@@ -13,19 +13,20 @@ import java.util.List;
 @Table(name = "bookings")
 public class Booking {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "bookingid")
     private Integer bookingID;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userid")
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tableid")
-    private RestaurantTable table;
+    private RestaurantTable restaurantTable;
 
     @Column(name = "bookingdate", nullable = false)
-    private LocalDate bookingDate;
+    private LocalDateTime bookingDate;
 
     @Column(name = "starttime", nullable = false)
     private LocalDateTime startTime;
@@ -33,11 +34,11 @@ public class Booking {
     @Column(name = "endtime")
     private LocalDateTime endTime;
 
-    @Column(name = "status", length = 20)
-    private String status;
-
     @Column(name = "notes", length = 100)
     private String notes;
+
+    @Column(name = "numberofguests", nullable = false)
+    private Integer numberOfGuests;
 
     @Column(name = "initialpayment", precision = 10, scale = 2)
     private BigDecimal initialPayment = BigDecimal.ZERO;
@@ -48,6 +49,16 @@ public class Booking {
     @Column(name = "paymenttime")
     private LocalDateTime paymentTime;
 
-    @OneToMany(mappedBy = "booking")
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "statusid", nullable = false)
+    private Status status; // FK đến bảng statuses
+
+    @OneToMany(mappedBy = "booking", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<BookingDetail> bookingDetails;
 }

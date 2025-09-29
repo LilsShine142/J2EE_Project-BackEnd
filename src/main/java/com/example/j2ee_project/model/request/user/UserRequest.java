@@ -38,8 +38,8 @@ public class UserRequest {
     // @Size(max = 10, message = "Mã xác minh không được vượt quá 10 ký tự")
     private String verifyCode;
 
-    @NotBlank(message = "Trạng thái tài khoản không được để trống")
-    private String status = "Unverified";
+    @NotNull(message = "Trạng thái không được để trống")
+    private Integer statusId;
 
     @DecimalMin(value = "0.0", message = "Tổng chi tiêu không được âm")
     private Double totalSpent = 0.0;

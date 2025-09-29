@@ -17,9 +17,12 @@ public class Order {
     @JoinColumn(name = "userid")
     private User user;
 
+    @Column(name = "bookingid", nullable = true)
+    private Integer bookingID;
+
     @ManyToOne
     @JoinColumn(name = "tableid")
-    private RestaurantTable table;
+    private RestaurantTable restaurantTable;
 
     @Column(name = "orderdate")
     private LocalDateTime orderDate = LocalDateTime.now();

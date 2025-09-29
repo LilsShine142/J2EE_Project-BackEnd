@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -20,12 +21,19 @@ public class Meal {
     @Column(name = "price", nullable = false, precision = 8, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "status", length = 20)
-    private String status;
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
 
     @ManyToOne
     @JoinColumn(name = "categoryid")
     private Category category;
+
+    @ManyToOne
+    @JoinColumn(name = "statusid")
+    private Status status;
 
     @OneToMany(mappedBy = "meal")
     private List<BookingDetail> bookingDetails;

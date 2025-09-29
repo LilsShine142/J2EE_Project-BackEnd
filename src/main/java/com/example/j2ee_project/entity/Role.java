@@ -22,8 +22,8 @@ public class Role {
     @Column(name = "rolename", nullable = false, unique = true, length = 20)
     private String roleName;
 
-    @Column(name = "roledescription", length = 100)
-    private String roleDescription;
+    @Column(name = "description", length = 100)
+    private String description;
 
     @Column(name = "createdat", nullable = false)
     private LocalDateTime createdAt;

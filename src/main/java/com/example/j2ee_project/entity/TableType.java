@@ -2,6 +2,8 @@ package com.example.j2ee_project.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -17,6 +19,12 @@ public class TableType {
 
     @Column(name = "capacity", nullable = false)
     private Integer capacity;
+
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "tableType")
     private List<RestaurantTable> tables;
