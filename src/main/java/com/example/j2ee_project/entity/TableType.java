@@ -17,8 +17,8 @@ public class TableType {
     @Column(name = "typename", nullable = false, length = 50)
     private String typeName;
 
-    @Column(name = "capacity", nullable = false)
-    private Integer capacity;
+    @Column(name = "numberofguests", nullable = false)
+    private Integer numberOfGuests;
 
     @Column(name = "createdat")
     private LocalDateTime createdAt;

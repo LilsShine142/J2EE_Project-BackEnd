@@ -95,7 +95,7 @@ public class BookingService implements BookingServiceInterface {
         }
 
         // Kiểm tra sức chứa
-        if (bookingRequest.getNumberOfGuests() > table.getTableType().getCapacity()) {
+        if (bookingRequest.getNumberOfGuests() > table.getTableType().getNumberOfGuests()) {
             throw new IllegalStateException("Bàn không đủ sức chứa");
         }
 
