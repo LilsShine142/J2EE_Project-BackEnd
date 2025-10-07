@@ -1,6 +1,8 @@
 package com.example.j2ee_project.repository;
 
 import com.example.j2ee_project.entity.BookingDetail;
+import com.example.j2ee_project.entity.User;
+
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -15,4 +17,6 @@ public interface BookingDetailRepository extends JpaRepository<BookingDetail, In
 
     // Tìm booking detail bằng bookingId và mealId
     Optional<BookingDetail> findByBookingBookingIDAndMealMealID(Integer bookingId, Integer mealId);
+
+    Optional<User> findById_BookingID(Integer bookingID);
 }

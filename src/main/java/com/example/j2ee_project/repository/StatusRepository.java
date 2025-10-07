@@ -1,10 +1,10 @@
 package com.example.j2ee_project.repository;
 
 import com.example.j2ee_project.entity.Status;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import java.util.Optional;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
 public interface StatusRepository extends JpaRepository<Status, Integer> {
-    Status findByStatusName(String statusName);
+    Optional<Status> findByStatusName(String statusName);
 }

@@ -61,20 +61,14 @@ public class BookingService implements BookingServiceInterface {
     @Transactional
     public BookingDTO createBooking(BookingRequestDTO bookingRequest) {
         // Lấy status từ StatusRepository
-        Status availableStatus = statusRepository.findByStatusName(EStatus.AVAILABLE.getName());
-        if (availableStatus == null) {
-            throw new ResourceNotFoundException("Không tìm thấy status Available");
-        }
+        Status availableStatus = statusRepository.findByStatusName(EStatus.AVAILABLE.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy status Available"));
 
-        Status occupiedStatus = statusRepository.findByStatusName(EStatus.OCCUPIED.getName());
-        if (occupiedStatus == null) {
-            throw new ResourceNotFoundException("Không tìm thấy status Occupied");
-        }
+        Status occupiedStatus = statusRepository.findByStatusName(EStatus.OCCUPIED.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy status Occupied"));
 
-        Status pendingStatus = statusRepository.findByStatusName(EStatus.PENDING.getName());
-        if (pendingStatus == null) {
-            throw new ResourceNotFoundException("Không tìm thấy status Pending");
-        }
+        Status pendingStatus = statusRepository.findByStatusName(EStatus.PENDING.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy status Pending"));
 
         // Validate user
         User user = userRepository.findById(bookingRequest.getUserID())
@@ -150,19 +144,14 @@ public class BookingService implements BookingServiceInterface {
                     throw new IllegalArgumentException("Số lượng món ăn phải lớn hơn 0");
                 }
 
-                System.out.println("Creating BookingDetail for bookingID: " + booking.getBookingID() + ", mealID: " + detailRequest.getMealID());
+                System.out.println("Creating BookingDetail for bookingID: " + booking.getBookingID() + ", mealID: "
+                        + detailRequest.getMealID());
                 // Thêm booking detail với bookingID thực
                 addBookingDetail(booking.getBookingID(), detailRequest);
             }
         }
 
         return mapToBookingDTO(booking);
-    }
-
-    @Override
-    public void cancelBooking(Integer bookingID) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'cancelBooking'");
     }
 
     @Override
@@ -217,36 +206,85 @@ public class BookingService implements BookingServiceInterface {
         return convertToDTO(savedDetail);
     }
 
+    // Cập nhật booking
     @Transactional
-    public BookingDTO updateBookingMeals(Integer bookingID, List<BookingDetailRequest> mealRequests) {
-        // Tìm booking
+    public BookingDTO updateBooking(Integer bookingID, BookingDTO bookingDTO) {
         Booking booking = bookingRepository.findById(bookingID)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy booking với ID: " + bookingID));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
 
-        // CÓ THỂ CẬP NHẬT MÓN CHO CẢ PENDING VÀ CONFIRMED BOOKING
-        if (mealRequests != null && !mealRequests.isEmpty()) {
-            for (BookingDetailRequest detailRequest : mealRequests) {
-                Meal meal = mealRepository.findById(detailRequest.getMealID())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Không tìm thấy món ăn với ID: " + detailRequest.getMealID()));
+        // Kiểm tra nếu thay đổi thời gian hoặc bàn
+        if (!booking.getRestaurantTable().getTableID().equals(bookingDTO.getTableID()) ||
+                !booking.getStartTime().equals(bookingDTO.getStartTime()) ||
+                !booking.getEndTime().equals(bookingDTO.getEndTime())) {
 
-                if (!meal.getStatus().getStatusName().equals(EStatus.ACTIVE.getName())) {
-                    throw new IllegalStateException("Món ăn " + meal.getMealName() + " không khả dụng");
-                }
-
-                if (detailRequest.getQuantity() <= 0) {
-                    throw new IllegalArgumentException("Số lượng món ăn phải lớn hơn 0");
-                }
-
-                addBookingDetail(bookingID, detailRequest);
+            if (!isTableAvailable(bookingDTO.getTableID(), bookingDTO.getStartTime(), bookingDTO.getEndTime())) {
+                throw new RuntimeException("Bàn đã được đặt trong khung giờ này");
             }
+
+            booking.setRestaurantTable(restaurantTableRepository.findById(bookingDTO.getTableID())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn")));
         }
 
-        // Cập nhật thời gian
+        booking.setStartTime(bookingDTO.getStartTime());
+        booking.setEndTime(bookingDTO.getEndTime());
+        booking.setNotes(bookingDTO.getNotes());
+        booking.setNumberOfGuests(bookingDTO.getNumberOfGuests());
         booking.setUpdatedAt(LocalDateTime.now());
-        bookingRepository.save(booking);
 
-        return mapToBookingDTO(booking);
+        Booking updatedBooking = bookingRepository.save(booking);
+        return convertToDTO(updatedBooking);
+    }
+
+    // Hủy booking
+    @Transactional
+    public void cancelBooking(Integer bookingID) {
+        Booking booking = bookingRepository.findById(bookingID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+
+        // Set status = Cancelled (statusID = 4)
+        booking.setStatus(statusRepository.findById(4)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy status")));
+        booking.setUpdatedAt(LocalDateTime.now());
+
+        bookingRepository.save(booking);
+    }
+
+    // Xác nhận booking
+    @Transactional
+    public BookingDTO confirmBooking(Integer bookingID) {
+        Booking booking = bookingRepository.findById(bookingID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+
+        // Set status = Confirmed (statusID = 2)
+        booking.setStatus(statusRepository.findById(2)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy status")));
+        booking.setUpdatedAt(LocalDateTime.now());
+
+        Booking confirmedBooking = bookingRepository.save(booking);
+        return convertToDTO(confirmedBooking);
+    }
+
+    // Hoàn thành booking
+    @Transactional
+    public BookingDTO completeBooking(Integer bookingID) {
+        Booking booking = bookingRepository.findById(bookingID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+
+        // Set status = Completed (statusID = 5)
+        booking.setStatus(statusRepository.findById(5)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy status")));
+        booking.setUpdatedAt(LocalDateTime.now());
+
+        Booking completedBooking = bookingRepository.save(booking);
+        return convertToDTO(completedBooking);
+    }
+
+    // Kiểm tra xem bàn có sẵn trong khoảng thời gian không
+    private boolean isTableAvailable(Integer tableID, LocalDateTime startTime, LocalDateTime endTime) {
+        List<String> excludedStatuses = Arrays.asList(
+                EStatus.CANCELLED.getName(),
+                EStatus.COMPLETED.getName());
+        return !bookingRepository.existsOverlappingBooking(tableID, startTime, endTime, excludedStatuses);
     }
 
     private BookingDetailDTO convertToDTO(BookingDetail bookingDetail) {
@@ -262,86 +300,27 @@ public class BookingService implements BookingServiceInterface {
                 .build();
     }
 
-    @Override
-    public List<BookingDetailDTO> getBookingDetails(Integer bookingID) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getBookingDetails'");
+    // Convert Entity sang DTO (Booking -> BookingDTO)
+    private BookingDTO convertToDTO(Booking booking) {
+        return BookingDTO.builder()
+                .bookingID(booking.getBookingID())
+                .userID(booking.getUser().getUserID())
+                .userName(booking.getUser().getFullName())
+                .tableID(booking.getRestaurantTable().getTableID())
+                .tableName(booking.getRestaurantTable().getTableName())
+                .bookingDate(booking.getBookingDate())
+                .startTime(booking.getStartTime())
+                .endTime(booking.getEndTime())
+                .status(booking.getStatus().getStatusName())
+                .notes(booking.getNotes())
+                .numberOfGuests(booking.getNumberOfGuests())
+                .initialPayment(booking.getInitialPayment())
+                .paymentMethod(booking.getPaymentMethod())
+                .paymentTime(booking.getPaymentTime())
+                .createdAt(booking.getCreatedAt())
+                .updatedAt(booking.getUpdatedAt())
+                .build();
     }
-
-    // @Override
-    // @Transactional
-    // public BookingDetailDTO addBookingDetail(Integer bookingID,
-    // BookingDetailRequest request) {
-    // Booking booking = bookingRepository.findById(bookingID)
-    // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt bàn với
-    // ID: " + bookingID));
-
-    // Meal meal = mealRepository.findById(request.getMealID())
-    // .orElseThrow(
-    // () -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " +
-    // request.getMealID()));
-    // if (!"Available".equalsIgnoreCase(meal.getStatus())) {
-    // throw new IllegalStateException("Món ăn không sẵn sàng");
-    // }
-
-    // BookingDetail detail = new BookingDetail();
-    // detail.setBooking(booking);
-    // detail.setMeal(meal);
-    // detail.setQuantity(request.getQuantity());
-    // detail.setCreatedAt(LocalDateTime.now());
-    // detail.setUpdatedAt(LocalDateTime.now());
-
-    // detail = bookingDetailRepository.save(detail);
-    // return mapToBookingDetailDTO(detail);
-    // }
-
-    // @Override
-    // @Transactional
-    // public BookingDetailDTO updateBookingDetail(Integer detailID,
-    // UpdateBookingDetailRequest request) {
-    // BookingDetail detail = bookingDetailRepository.findById(detailID)
-    // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi tiết món
-    // với ID: " + detailID));
-
-    // if (request.getQuantity() <= 0) {
-    // bookingDetailRepository.delete(detail);
-    // return null;
-    // } else {
-    // detail.setQuantity(request.getQuantity());
-    // detail.setUpdatedAt(LocalDateTime.now());
-    // detail = bookingDetailRepository.save(detail);
-    // return mapToBookingDetailDTO(detail);
-    // }
-    // }
-
-    // @Override
-    // @Transactional(readOnly = true)
-    // public List<BookingDetailDTO> getBookingDetails(Integer bookingID) {
-    // List<BookingDetail> details =
-    // bookingDetailRepository.findByBookingBookingID(bookingID);
-    // return details.stream()
-    // .map(this::mapToBookingDetailDTO)
-    // .collect(Collectors.toList());
-    // }
-
-    // @Override
-    // @Transactional
-    // public void cancelBooking(Integer bookingID) {
-    // Booking booking = bookingRepository.findById(bookingID)
-    // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt bàn với
-    // ID: " + bookingID));
-
-    // booking.setStatus("Cancelled");
-    // booking.setUpdatedAt(LocalDateTime.now());
-    // bookingRepository.save(booking);
-
-    // RestaurantTable table = booking.getRestaurantTable();
-    // table.setStatus("Available");
-    // table.setUpdatedAt(LocalDateTime.now());
-    // restaurantTableRepository.save(table);
-
-    // bookingDetailRepository.deleteByBookingBookingID(bookingID);
-    // }
 
     private BookingDTO mapToBookingDTO(Booking booking) {
         BookingDTO.BookingDTOBuilder builder = BookingDTO.builder()
@@ -362,30 +341,89 @@ public class BookingService implements BookingServiceInterface {
         return builder.build();
     }
 
+    private BookingDetailDTO convertDetailToDTO(BookingDetail detail) {
+        return BookingDetailDTO.builder()
+                .id(detail.getId())
+                .bookingID(detail.getBooking().getBookingID())
+                .mealID(detail.getMeal().getMealID())
+                .quantity(detail.getQuantity())
+                .createdAt(detail.getCreatedAt())
+                .updatedAt(detail.getUpdatedAt())
+                .build();
+    }
+
     @Override
     public BookingDetailDTO updateBookingDetail(Integer detailID, BookingDetailRequest request) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'updateBookingDetail'");
     }
 
-    // private BookingDetailDTO mapToBookingDetailDTO(BookingDetail detail) {
-    // return BookingDetailDTO.builder()
-    // .bookingDetailID(detail.getBookingDetailID())
-    // .bookingID(detail.getBooking().getBookingID())
-    // .mealID(detail.getMeal().getMealID())
-    // .mealName(detail.getMeal().getMealName())
-    // .quantity(detail.getQuantity())
-    // .createdAt(detail.getCreatedAt())
-    // .updatedAt(detail.getUpdatedAt())
-    // .build();
-    // }
+    // Lấy tất cả bookings
+    public List<BookingDTO> getAllBookings() {
+        return bookingRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
 
-    // @Override
-    // public BookingDetailDTO updateBookingDetail(Integer detailID,
-    // BookingDetailRequest request) {
-    // // TODO Auto-generated method stub
-    // throw new UnsupportedOperationException("Unimplemented method
-    // 'updateBookingDetail'");
-    // }
+    // Lấy booking theo ID
+    public BookingDTO getBookingById(Integer bookingID) {
+        Booking booking = bookingRepository.findById(bookingID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+        return convertToDTO(booking);
+    }
 
+    // Lấy bookings theo user
+    public List<BookingDTO> getBookingsByUser(Integer userID) {
+        return bookingRepository.findByUser_UserID(userID).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Lấy bookings sắp tới của user
+    public List<BookingDTO> getUpcomingBookingsByUser(Integer userID) {
+        return bookingRepository.findUpcomingBookingsByUser(userID, LocalDateTime.now()).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Lấy lịch sử bookings của user
+    public List<BookingDTO> getBookingHistoryByUser(Integer userID) {
+        return bookingRepository.findBookingHistoryByUser(userID, LocalDateTime.now()).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Lấy bookings theo ngày
+    public List<BookingDTO> getBookingsByDate(LocalDateTime date) {
+        return bookingRepository.findByBookingDate(date).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Lấy bookings theo table
+    public List<BookingDTO> getBookingsByTable(Integer tableID) {
+        return bookingRepository.findByRestaurantTable_TableID(tableID).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Lấy bookings theo status
+    public List<BookingDTO> getBookingsByStatus(Integer statusID) {
+        return bookingRepository.findByStatus_StatusID(statusID).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<BookingDetailDTO> getBookingDetails(Integer bookingID) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getBookingDetails'");
+    }
+
+    // Lấy chi tiết booking (món ăn đã đặt)
+    // public List<BookingDetailDTO> getBookingDetails(Integer bookingID) {
+    // return bookingDetailRepository.findById_BookingID(bookingID).stream()
+    // .map(this::convertDetailToDTO)
+    // .collect(Collectors.toList());
+    // }
 }

@@ -73,7 +73,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.put("success", false);
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         body.put("error", "Internal Server Error");
-        body.put("message", "Đã xảy ra lỗi không mong muốn");
+        body.put("message", "Đã xảy ra lỗi không mong muốn: " + ex.getMessage());
         body.put("path", getRequestPath(request));
 
         // Log lỗi để debug (nên sử dụng Logger thay vì printStackTrace)

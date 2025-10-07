@@ -6,6 +6,9 @@ import java.util.List;
 
 @Data
 public class OrderRequestDTO {
+
+    private Integer bookingID;
+
     @NotNull(message = "UserID không được để trống")
     private Integer userID;
 
@@ -13,18 +16,9 @@ public class OrderRequestDTO {
     private Integer tableID;
 
     @NotEmpty(message = "Danh sách món ăn không được để trống")
-    private List<OrderItemDTO> orderItems;
+    private List<OrderDetailRequest> orderDetail;
 
-    @Size(max = 20, message = "Trạng thái không được vượt quá 20 ký tự")
-    private String status;
+    @NotNull(message = "Trạng thái không được để trống")
+    private Integer statusId;
 }
 
-@Data
-class OrderItemDTO {
-    @NotNull(message = "MealID không được để trống")
-    private Integer mealID;
-
-    @NotNull(message = "Số lượng không được để trống")
-    @Min(value = 1, message = "Số lượng phải lớn hơn 0")
-    private Integer quantity;
-}

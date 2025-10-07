@@ -9,7 +9,9 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 public class Order {
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "orderid")
     private Integer orderID;
 
@@ -27,9 +29,17 @@ public class Order {
     @Column(name = "orderdate")
     private LocalDateTime orderDate = LocalDateTime.now();
 
-    @Column(name = "status", length = 20)
-    private String status;
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "order")
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
+
+
+    @ManyToOne
+    @JoinColumn(name = "statusid")
+    private Status status;
+
+    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<OrderDetail> orderDetails;
 }

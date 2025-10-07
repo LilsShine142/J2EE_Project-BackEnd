@@ -19,12 +19,12 @@ public class BookingDetail {
 
     @ManyToOne
     @MapsId("bookingID")
-    @JoinColumn(name = "bookingid", insertable = false, updatable = false)
+    @JoinColumn(name = "bookingid")
     private Booking booking;
 
     @ManyToOne
     @MapsId("mealID")
-    @JoinColumn(name = "mealid", insertable = false, updatable = false)
+    @JoinColumn(name = "mealid")
     private Meal meal;
 
     @Column(name = "quantity")

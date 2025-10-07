@@ -19,5 +19,6 @@ public interface BookingServiceInterface {
     BookingDetailDTO updateBookingDetail(Integer detailID, BookingDetailRequest request);
 
     List<BookingDetailDTO> getBookingDetails(Integer bookingID);
-    // Các method khác như update status, payment
+    
+    
 }

@@ -1,5 +1,7 @@
 package com.example.j2ee_project.model.request.meal;
 
+import java.time.LocalDateTime;
+
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -13,8 +15,14 @@ public class MealRequestDTO {
     @DecimalMin(value = "0.0", message = "Giá không được âm")
     private Double price;
 
+    private String image;
+
+    @NotNull(message = "CategoryID không được để trống")
     private Integer categoryID;
 
-    @Size(max = 20, message = "Trạng thái không được vượt quá 20 ký tự")
-    private String status;
+    @NotNull(message = "Trạng thái không được để trống")
+    private Integer statusId;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

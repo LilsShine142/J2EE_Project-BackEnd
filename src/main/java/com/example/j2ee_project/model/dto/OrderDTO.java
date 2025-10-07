@@ -12,6 +12,8 @@ public class OrderDTO {
     private Integer tableID;
     private String tableName;
     private LocalDateTime orderDate;
-    private String status;
+    private Integer statusId;
     private Double totalAmount;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

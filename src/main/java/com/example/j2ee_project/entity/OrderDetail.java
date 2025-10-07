@@ -3,12 +3,16 @@ package com.example.j2ee_project.entity;
 import com.example.j2ee_project.entity.keys.KeyOrderDetailId;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "orderdetails")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class OrderDetail {
     @EmbeddedId
     private KeyOrderDetailId id;
@@ -29,21 +33,16 @@ public class OrderDetail {
     @Column(name = "subtotal", precision = 10, scale = 2)
     private BigDecimal subTotal = BigDecimal.ZERO;
 
-    public OrderDetail(Order order, Meal meal, Integer quantity, BigDecimal subTotal) {
-        this.id = new KeyOrderDetailId(order.getOrderID(), meal.getMealID());
-        this.order = order;
-        this.meal = meal;
-        this.quantity = quantity;
-        this.subTotal = subTotal;
-    }
+    @Column(name = "createdat")
+    private LocalDateTime createdAt;
 
-    public OrderDetail() {
-    }
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
 
-    // Tính subtotal tự động
+    // Auto calculate subtotal
     @PrePersist
     @PreUpdate
-    private void calculateSubTotal() {
+    public void calculateSubTotal() {
         if (meal != null && quantity != null) {
             this.subTotal = meal.getPrice().multiply(BigDecimal.valueOf(quantity));
         }
