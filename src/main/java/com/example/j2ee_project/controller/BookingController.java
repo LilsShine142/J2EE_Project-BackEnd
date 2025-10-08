@@ -1,19 +1,15 @@
 package com.example.j2ee_project.controller;
 
-import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.BookingDTO;
-import com.example.j2ee_project.model.dto.BookingDetailDTO;
-import com.example.j2ee_project.model.request.booking.BookingDetailRequest;
 import com.example.j2ee_project.model.request.booking.BookingRequestDTO;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.booking.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -27,7 +23,6 @@ public class BookingController {
         this.responseHandler = responseHandler;
     }
 
-    // API tạo booking mới
     @PostMapping("/reserve")
     public ResponseEntity<?> createBooking(@Valid @RequestBody BookingRequestDTO bookingRequest) {
         try {
@@ -42,61 +37,33 @@ public class BookingController {
         }
     }
 
-    // API hủy booking
-    @PutMapping("/{bookingId}/cancel")
-    public ResponseEntity<?> cancelBooking(@PathVariable Integer bookingId) {
-        try {
-            bookingService.cancelBooking(bookingId);
-            return responseHandler.responseSuccess("Hủy đặt bàn thành công", null);
-        } catch (ResourceNotFoundException ex) {
-            return responseHandler.handleNotFound(ex.getMessage());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return responseHandler.responseError("Đã xảy ra lỗi khi hủy đặt bàn", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @GetMapping("/getall")
+    public ResponseEntity<?> getAllBookings(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer statusId,
+            @RequestParam(required = false) Integer userId,
+            @RequestParam(required = false) Integer tableId) {
+        Page<BookingDTO> bookingPage = bookingService.getAllBookings(offset, limit, search, statusId, userId, tableId);
+        return responseHandler.responseSuccess("Lấy danh sách booking thành công", bookingPage);
     }
 
-    // API thêm món ăn vào booking
-    @PostMapping("/{bookingId}/details")
-    public ResponseEntity<?> addBookingDetail(@PathVariable Integer bookingId,
-            @Valid @RequestBody BookingDetailRequest request) {
-        try {
-            BookingDetailDTO response = bookingService.addBookingDetail(bookingId, request);
-            return responseHandler.responseCreated("Thêm món ăn thành công", response);
-        } catch (IllegalStateException ex) {
-            return responseHandler.responseError(ex.getMessage(), HttpStatus.BAD_REQUEST);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return responseHandler.responseError("Đã xảy ra lỗi khi thêm món ăn", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<?> getBookingById(@PathVariable Integer bookingId) {
+        BookingDTO response = bookingService.getBookingById(bookingId);
+        return responseHandler.responseSuccess("Lấy thông tin booking thành công", response);
     }
 
-    // API cập nhật món ăn trong booking
-    @PutMapping("/details/{detailId}")
-    public ResponseEntity<?> updateBookingDetail(@PathVariable Integer detailId,
-            @Valid @RequestBody BookingDetailRequest request) {
-        try {
-            BookingDetailDTO response = bookingService.updateBookingDetail(detailId, request);
-            if (response == null) {
-                return responseHandler.responseSuccess("Xóa món ăn thành công", null);
-            }
-            return responseHandler.responseSuccess("Cập nhật món ăn thành công", response);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return responseHandler.responseError("Đã xảy ra lỗi khi cập nhật món ăn", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @PutMapping("/{bookingId}")
+    public ResponseEntity<?> updateBooking(@PathVariable Integer bookingId, @Valid @RequestBody BookingRequestDTO bookingRequestDTO) {
+        BookingDTO response = bookingService.updateBooking(bookingId, bookingRequestDTO);
+        return responseHandler.responseSuccess("Cập nhật booking thành công", response);
     }
 
-    // API lấy danh sách món ăn trong booking
-    @GetMapping("/{bookingId}/details")
-    public ResponseEntity<?> getBookingDetails(@PathVariable Integer bookingId) {
-        try {
-            List<BookingDetailDTO> response = bookingService.getBookingDetails(bookingId);
-            return responseHandler.responseSuccess("Lấy danh sách món ăn thành công", response);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            return responseHandler.responseError("Đã xảy ra lỗi khi lấy danh sách món ăn",
-                    HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    @DeleteMapping("/{bookingId}")
+    public ResponseEntity<?> deleteBooking(@PathVariable Integer bookingId) {
+        bookingService.deleteBooking(bookingId);
+        return responseHandler.responseSuccess("Hủy booking thành công", null);
     }
 }

@@ -6,19 +6,14 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class TableRequestDTO {
+public class TableTypesRequest {
     @NotBlank(message = "Tên bàn không được để trống")
     @Size(max = 50, message = "Tên bàn không được vượt quá 50 ký tự")
-    private String tableName;
+    private String typeName;
 
-    @NotBlank(message = "Vị trí không được để trống")
-    @Size(max = 50, message = "Vị trí không được vượt quá 50 ký tự")
-    private String location;
-
-    @NotNull(message = "Trạng thái không được để trống")
-    private Integer statusId;
-
-    private Integer tableTypeID;
+    @NotNull(message = "Số lượng khách không được để trống")
+    @Min(value = 1, message = "Số lượng khách phải lớn hơn 0")
+    private Integer numberOfGuests;
 
     private LocalDateTime createdAt;
 

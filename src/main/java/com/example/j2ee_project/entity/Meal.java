@@ -11,8 +11,10 @@ import java.util.List;
 @Entity
 @Table(name = "meals")
 public class Meal {
+
     @Id
-    @Column(name = "mealid")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "mealID")
     private Integer mealID;
 
     @Column(name = "mealname", nullable = false, length = 50)
@@ -20,6 +22,9 @@ public class Meal {
 
     @Column(name = "price", nullable = false, precision = 8, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "image", length = 255)
+    private String image;
 
     @Column(name = "createdat")
     private LocalDateTime createdAt;

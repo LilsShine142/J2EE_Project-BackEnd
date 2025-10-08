@@ -1,23 +1,17 @@
 package com.example.j2ee_project.service.booking;
 
-import com.example.j2ee_project.entity.RestaurantTable;
 import com.example.j2ee_project.model.dto.BookingDTO;
-import com.example.j2ee_project.model.dto.BookingDetailDTO;
-import com.example.j2ee_project.model.request.booking.BookingDetailRequest;
 import com.example.j2ee_project.model.request.booking.BookingRequestDTO;
-import java.time.LocalDateTime;
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 public interface BookingServiceInterface {
+    BookingDTO createBooking(BookingRequestDTO bookingRequestDTO);
 
-    BookingDTO createBooking(BookingRequestDTO bookingRequest);
+    Page<BookingDTO> getAllBookings(int offset, int limit, String search, Integer statusId, Integer userId, Integer tableId);
 
-    void cancelBooking(Integer bookingID);
+    BookingDTO getBookingById(Integer bookingId);
 
-    BookingDetailDTO addBookingDetail(Integer bookingID, BookingDetailRequest request);
+    BookingDTO updateBooking(Integer bookingId, BookingRequestDTO bookingRequestDTO);
 
-    BookingDetailDTO updateBookingDetail(Integer detailID, BookingDetailRequest request);
-
-    List<BookingDetailDTO> getBookingDetails(Integer bookingID);
-    // Các method khác như update status, payment
+    void deleteBooking(Integer bookingId);
 }
