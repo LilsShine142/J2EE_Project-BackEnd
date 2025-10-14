@@ -16,7 +16,7 @@ public class RestaurantTableDTO {
     private Integer statusId;
     private Integer tableTypeID;
     private String tableTypeName;
-    private Integer numberOfGuests;
+    private Integer capacity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

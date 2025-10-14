@@ -16,22 +16,22 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
     @Query("SELECT t FROM RestaurantTable t JOIN t.tableType tt WHERE " +
             "(:search IS NULL OR LOWER(t.tableName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
             "(:statusId IS NULL OR t.status.statusID = :statusId) AND " +
-            "(:numberOfGuests IS NULL OR tt.numberOfGuests >= :numberOfGuests)")
+            "(:capacity IS NULL OR tt.capacity >= :capacity)")
     Page<RestaurantTable> findByFilters(
             @Param("search") String search,
             @Param("statusId") Integer statusId,
-            @Param("numberOfGuests") Integer numberOfGuests,
+            @Param("capacity") Integer capacity,
             Pageable pageable);
 
     @Query("SELECT t FROM RestaurantTable t JOIN t.tableType tt WHERE " +
             "t.status.statusName = :status AND " +
-            "tt.numberOfGuests >= :numberOfGuests AND " +
+            "tt.capacity >= :capacity AND " +
             "NOT EXISTS (SELECT b FROM Booking b WHERE b.restaurantTable = t AND " +
             "b.status.statusName NOT IN :excludedStatuses AND " +
             "(:startTime < b.endTime AND :endTime > b.startTime))")
     Page<RestaurantTable> findAvailableTables(
             @Param("status") String status,
-            @Param("numberOfGuests") Integer numberOfGuests,
+            @Param("capacity") Integer capacity,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime,
             @Param("excludedStatuses") List<String> excludedStatuses,

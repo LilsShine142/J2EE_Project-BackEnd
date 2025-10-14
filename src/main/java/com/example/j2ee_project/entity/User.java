@@ -58,11 +58,13 @@ public class User {
     @Column(name = "statuswork", length = 20)
     private String statusWork;
 
-    @Column(name = "createdat", nullable = false)
-    private LocalDateTime createdAt;
+    @Builder.Default
+    @Column(name = "createdat")
+    private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updatedat")
-    private LocalDateTime updatedAt;
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "user")
     private List<Booking> bookings;

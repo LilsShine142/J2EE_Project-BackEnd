@@ -35,7 +35,6 @@ public class Order {
     @Column(name = "updatedat")
     private LocalDateTime updatedAt;
 
-
     @ManyToOne
     @JoinColumn(name = "statusid")
     private Status status;

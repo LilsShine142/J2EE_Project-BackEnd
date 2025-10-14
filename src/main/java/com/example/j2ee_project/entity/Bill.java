@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @Table(name = "bills")
 public class Bill {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "billid")
     private Integer billID;
 
@@ -50,6 +51,9 @@ public class Bill {
     @Column(name = "remainingamount", precision = 10, scale = 2)
     private BigDecimal remainingAmount = BigDecimal.ZERO;
 
+    @Column(name= "transactionno", length = 50)
+    private String transactionNo; // Thêm trường để lưu vnp_TransactionNo
+
     @Column(name = "createdat")
     private LocalDateTime createdAt;
 
@@ -60,4 +64,11 @@ public class Bill {
     @JoinColumn(name = "statusid", nullable = false)
     private Status status; // FK đến bảng statuses
 
+    @OneToOne
+    @JoinColumn(name = "orderid")
+    private Order order; // Liên kết với Order
+
+    @OneToOne
+    @JoinColumn(name = "bookingid")
+    private Booking booking; // Liên kết với Booking
 }

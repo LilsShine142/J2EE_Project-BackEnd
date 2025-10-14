@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 public interface TableServiceInterface {
     RestaurantTableDTO createTable(TableRequestDTO tableRequestDTO);
 
-    Page<RestaurantTableDTO> getAllTables(int offset, int limit, String search, Integer statusId, Integer numberOfGuests);
+    Page<RestaurantTableDTO> getAllTables(int offset, int limit, String search, Integer statusId, Integer capacity);
 
-    Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer numberOfGuests);
+    Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity);
 
     RestaurantTableDTO getTableById(Integer tableId);
 

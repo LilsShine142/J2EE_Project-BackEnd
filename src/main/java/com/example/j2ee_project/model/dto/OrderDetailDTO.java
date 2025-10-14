@@ -1,19 +1,25 @@
 package com.example.j2ee_project.model.dto;
 
 import com.example.j2ee_project.entity.keys.KeyBookingDetailId;
-import lombok.Data;
+import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class OrderDetailDTO {
     private KeyBookingDetailId id;
     private Integer orderID;
     private Integer mealID;
-//    private String mealName;
-//    private Double mealPrice;
+    private String mealName;
+    private BigDecimal mealPrice;
     private Integer quantity;
-    private Double subTotal;
+    private BigDecimal subTotal;
     private LocalDateTime createAt;
     private LocalDateTime updateAt;
 }

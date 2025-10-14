@@ -5,11 +5,16 @@ import com.example.j2ee_project.entity.keys.KeyOrderDetailId;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.OrderDTO;
 import com.example.j2ee_project.model.dto.OrderDetailDTO;
-import com.example.j2ee_project.model.request.order.OrderRequestDTO;
 import com.example.j2ee_project.model.request.order.OrderDetailRequest;
-import com.example.j2ee_project.repository.*;
+import com.example.j2ee_project.model.request.order.OrderRequestDTO;
+import com.example.j2ee_project.repository.MealRepository;
+import com.example.j2ee_project.repository.OrderDetailRepository;
+import com.example.j2ee_project.repository.OrderRepository;
+import com.example.j2ee_project.repository.RestaurantTableRepository;
+import com.example.j2ee_project.repository.StatusRepository;
+import com.example.j2ee_project.repository.UserRepository;
 import com.example.j2ee_project.utils._enum.EStatus;
-import lombok.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,10 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,363 +33,248 @@ import java.util.stream.Collectors;
 public class OrderService implements OrderServiceInterface {
 
     private final OrderRepository orderRepository;
-    private final OrderDetailRepository orderDetailRepository;
     private final UserRepository userRepository;
-    private final RestaurantTableRepository tableRepository;
+    private final RestaurantTableRepository restaurantTableRepository;
     private final MealRepository mealRepository;
+    private final OrderDetailRepository orderDetailRepository;
     private final StatusRepository statusRepository;
+
+    private List<OrderDetail> addOrderDetails;
 
     @Override
     @Transactional
     public OrderDTO createOrder(OrderRequestDTO orderRequestDTO) {
-        try {
-//            log.info("Creating order for userID: {}", orderRequestDTO.getUserID());
+        // Validate user
+        User user = userRepository.findById(orderRequestDTO.getUserID())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + orderRequestDTO.getUserID()));
 
-            // Validate user
-            User user = userRepository.findById(orderRequestDTO.getUserID())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Không tìm thấy user với ID: " + orderRequestDTO.getUserID()));
+        // Validate table
+        RestaurantTable table = restaurantTableRepository.findById(orderRequestDTO.getTableID())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bàn với ID: " + orderRequestDTO.getTableID()));
 
-            // Tạo Order entity
-            Order order = new Order();
-            order.setUser(user);
+        // Check table status
+        if (!table.getStatus().getStatusName().equals(EStatus.AVAILABLE.getName())) {
+            throw new IllegalStateException("Bàn không sẵn sàng để đặt");
+        }
 
-            // Xử lý bookingID
-            if (orderRequestDTO.getBookingID() != null) {
-                order.setBookingID(orderRequestDTO.getBookingID());
+        // Validate status (default to PENDING)
+        Status status = statusRepository.findById(orderRequestDTO.getStatusId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái với ID: " + orderRequestDTO.getStatusId()));
+
+        // Create order
+        Order order = new Order();
+        order.setUser(user);
+        order.setBookingID(orderRequestDTO.getBookingID());
+        order.setRestaurantTable(table);
+        order.setOrderDate(LocalDateTime.now());
+        order.setStatus(status);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+
+        Order savedOrder = orderRepository.save(order);
+
+        // Handle order details if provided
+        if (orderRequestDTO.getOrderDetails() != null && !orderRequestDTO.getOrderDetails().isEmpty()) {
+            addOrderDetails = new ArrayList<>();
+            OrderDetail saveOrderDetail;
+            for (OrderDetailRequest detailRequest : orderRequestDTO.getOrderDetails()) {
+                Meal meal = mealRepository.findById(detailRequest.getMealID())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + detailRequest.getMealID()));
+
+                OrderDetail detail = OrderDetail.builder()
+                        .id(new KeyOrderDetailId(savedOrder.getOrderID(), detailRequest.getMealID())) // Temporary orderID
+                        .order(savedOrder)
+                        .meal(meal)
+                        .quantity(detailRequest.getQuantity())
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                detail.calculateSubTotal();
+                saveOrderDetail = orderDetailRepository.save(detail);
+                addOrderDetails.add(saveOrderDetail);
             }
-
-            // Xử lý table
-            if (orderRequestDTO.getTableID() != null) {
-                RestaurantTable table = tableRepository.findById(orderRequestDTO.getTableID())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Không tìm thấy bàn với ID: " + orderRequestDTO.getTableID()));
-                order.setRestaurantTable(table);
-            }
-
-            // Set các field cơ bản
-            order.setOrderDate(LocalDateTime.now());
-
-            // Lấy status (mặc định là PENDING nếu không có)
-            Integer statusId = orderRequestDTO.getStatusId() != null ? orderRequestDTO.getStatusId() : 1;
-            Status status = statusRepository.findById(statusId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái với ID: " + statusId));
-            order.setStatus(status);
-
-            order.setCreatedAt(LocalDateTime.now());
-            order.setUpdatedAt(LocalDateTime.now());
-
-            // Lưu Order trước để có orderID
-            Order savedOrder = orderRepository.save(order);
-//            log.info("Created order with ID: {}", savedOrder.getOrderID());
-
-            // Thêm order details
-            if (orderRequestDTO.getOrderDetail() != null && !orderRequestDTO.getOrderDetail().isEmpty()) {
-                for (OrderDetailRequest detailRequest : orderRequestDTO.getOrderDetail()) {
-//                    log.info("Adding order detail - mealID: {}, quantity: {}",
-//                            detailRequest.getMealID(), detailRequest.getQuantity());
-                    addOrderDetail(savedOrder.getOrderID(), detailRequest);
-                }
-            }
-
-            // Refresh để lấy đầy đủ thông tin
-            Order finalOrder = orderRepository.findById(savedOrder.getOrderID())
-                    .orElseThrow(() -> new ResourceNotFoundException("Order not found after creation"));
-
-            return convertToDTO(finalOrder);
-
-        } catch (Exception e) {
-//            log.error("Error creating order: ", e);
-            throw new RuntimeException("Đã xảy ra lỗi khi tạo order: " + e.getMessage());
         }
+
+        // Calculate totalAmount
+        double totalAmount = savedOrder.getOrderDetails().stream()
+                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
+                .sum();
+
+        savedOrder.setOrderDetails(addOrderDetails);
+        return mapToOrderDTO(savedOrder);
     }
 
     @Override
-    @Transactional
-    public OrderDetailDTO addOrderDetail(Integer orderID, OrderDetailRequest request) {
-//        log.info("Adding order detail - orderID: {}, mealID: {}", orderID, request.getMealID());
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> getAllOrders(int offset, int limit, String search, Integer statusId, Integer userId, Integer tableId) {
+        if (offset < 0) offset = 0;
+        if (limit <= 0) limit = 10;
+        if (limit > 100) limit = 100;
 
-        // Tìm order
-        Order order = orderRepository.findById(orderID)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderID));
-
-        // Tìm meal
-        Meal meal = mealRepository.findById(request.getMealID())
-                .orElseThrow(() -> new ResourceNotFoundException("Meal not found with ID: " + request.getMealID()));
-
-        // Kiểm tra trạng thái món ăn
-        if (!meal.getStatus().getStatusName().equals(EStatus.ACTIVE.getName())) {
-            throw new IllegalStateException("Món ăn " + meal.getMealName() + " không khả dụng");
-        }
-
-        // Kiểm tra quantity
-        if (request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Số lượng món ăn phải lớn hơn 0");
-        }
-
-        // Kiểm tra xem order detail đã tồn tại chưa
-        Optional<OrderDetail> existingDetail = orderDetailRepository
-                .findByOrderOrderIDAndMealMealID(orderID, request.getMealID());
-
-        OrderDetail orderDetail;
-
-        if (existingDetail.isPresent()) {
-            // Update existing detail
-            orderDetail = existingDetail.get();
-            int newQuantity = orderDetail.getQuantity() + request.getQuantity();
-            orderDetail.setQuantity(newQuantity);
-
-            // Tính lại subtotal
-            BigDecimal newSubTotal = meal.getPrice().multiply(BigDecimal.valueOf(newQuantity));
-            orderDetail.setSubTotal(newSubTotal);
-            orderDetail.setUpdatedAt(LocalDateTime.now());
-
-//            log.info("Updated existing order detail - new quantity: {}, new subtotal: {}",
-//                    newQuantity, newSubTotal);
-        } else {
-            // Tạo mới order detail với composite key
-            KeyOrderDetailId key = new KeyOrderDetailId(orderID, request.getMealID());
-            BigDecimal subTotal = meal.getPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
-
-            orderDetail = OrderDetail.builder()
-                    .id(key)
-                    .order(order)
-                    .meal(meal)
-                    .quantity(request.getQuantity())
-                    .subTotal(subTotal)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-//            log.info("Created new order detail - quantity: {}, subtotal: {}",
-//                    request.getQuantity(), subTotal);
-        }
-
-        // Lưu order detail
-        OrderDetail savedDetail = orderDetailRepository.save(orderDetail);
-//        log.info("Successfully saved order detail");
-
-        return convertDetailToDTO(savedDetail);
-    }
-
-    @Override
-    @Transactional
-    public void saveOrderDetails(Integer orderID, List<OrderDetailDTO> detailDTOs) {
-        Order order = orderRepository.findById(orderID)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order với ID: " + orderID));
-
-        for (OrderDetailDTO dto : detailDTOs) {
-            Meal meal = mealRepository.findById(dto.getMealID())
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + dto.getMealID()));
-
-            BigDecimal subTotal = meal.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity()));
-
-            // Tạo composite key
-            KeyOrderDetailId key = new KeyOrderDetailId(orderID, dto.getMealID());
-
-            OrderDetail detail = OrderDetail.builder()
-                    .id(key)
-                    .order(order)
-                    .meal(meal)
-                    .quantity(dto.getQuantity())
-                    .subTotal(subTotal)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            orderDetailRepository.save(detail);
-        }
-    }
-
-    @Override
-    public List<OrderDTO> getAllOrders() {
-        return orderRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Map<String, Object> getOrdersPaginated(int offset, int limit,
-            Integer userID,
-            Integer statusId,
-            LocalDateTime startDate,
-            LocalDateTime endDate) {
-
-        // Validate input parameters
-        if (offset < 0)
-            offset = 0;
-        if (limit <= 0)
-            limit = 10;
-        if (limit > 100)
-            limit = 100;
+        if (search == null) search = "";
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
 
-        Page<Order> page;
+        Page<Order> orderPage = orderRepository.findByFilters(search, statusId, userId, tableId, pageable);
 
-        // Sửa lỗi: Sử dụng các methods đúng từ repository
-        if (userID != null && statusId != null && startDate != null && endDate != null) {
-            page = orderRepository.findByUserUserIDAndStatusAndOrderDateBetween(userID, statusId, startDate, endDate,
-                    pageable);
-        } else if (userID != null && statusId != null) {
-            page = orderRepository.findByUserUserIDAndStatus(userID, statusId, pageable);
-        } else if (userID != null && startDate != null && endDate != null) {
-            page = orderRepository.findByUserUserIDAndOrderDateBetween(userID, startDate, endDate, pageable);
-        } else if (statusId != null && startDate != null && endDate != null) {
-            page = orderRepository.findByStatusAndOrderDateBetween(statusId, startDate, endDate, pageable);
-        } else if (userID != null) {
-            page = orderRepository.findByUserUserID(userID, pageable);
-        } else if (statusId != null) {
-            page = orderRepository.findByStatus(statusId, pageable);
-        } else if (startDate != null && endDate != null) {
-            page = orderRepository.findByOrderDateBetween(startDate, endDate, pageable);
-        } else {
-            page = orderRepository.findAll(pageable);
-        }
-
-        List<OrderDTO> orders = page.getContent().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("orders", orders);
-        response.put("currentPage", page.getNumber());
-        response.put("totalItems", page.getTotalElements());
-        response.put("totalPages", page.getTotalPages());
-        response.put("hasNext", page.hasNext());
-        response.put("hasPrevious", page.hasPrevious());
-        return response;
+        return orderPage.map(order -> {
+            double totalAmount = order.getOrderDetails().stream()
+                    .mapToDouble(detail -> detail.getSubTotal().doubleValue())
+                    .sum();
+            return mapToOrderDTO(order);
+        });
     }
 
     @Override
-    public OrderDTO getOrderById(Integer orderID) {
-        Order order = orderRepository.findById(orderID)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order với ID: " + orderID));
-        return convertToDTO(order);
+    @Transactional(readOnly = true)
+    public OrderDTO getOrderById(Integer orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        double totalAmount = order.getOrderDetails().stream()
+                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
+                .sum();
+
+        return mapToOrderDTO(order);
     }
-
-    @Override
-    public List<OrderDTO> getOrdersByUser(Integer userID) {
-        // Sửa lỗi: Sử dụng method đúng từ repository
-        return orderRepository.findByUserUserID(userID).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public List<OrderDTO> getOrdersByStatus(Status status) {
-        return orderRepository.findByStatus(status).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<OrderDTO> getOrdersByDate(LocalDateTime date) {
-        // Tìm orders trong ngày cụ thể
-        LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
-        return orderRepository.findByOrderDateBetween(startOfDay, endOfDay).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<OrderDetailDTO> getOrderDetails(Integer orderID) {
-        // Sửa lỗi: Sử dụng method đúng từ repository
-        return orderDetailRepository.findByOrderOrderID(orderID).stream()
-                .map(this::convertDetailToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public OrderDTO updateOrderStatus(Integer orderID, Status status) {
-        return null;
-    }
-
-    // @Override
-    // @Transactional
-    // public OrderDTO updateOrderStatus(Integer orderID, Status status) {
-    // Order order = orderRepository.findById(orderID)
-    // .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order với
-    // ID: " + orderID));
-
-    // order.setStatus(status);
-    // Order updatedOrder = orderRepository.save(order);
-    // return convertToDTO(updatedOrder);
-    // }
 
     @Override
     @Transactional
-    public void deleteOrder(Integer orderID) {
-        if (!orderRepository.existsById(orderID)) {
-            throw new ResourceNotFoundException("Không tìm thấy order với ID: " + orderID);
+    public OrderDTO updateOrder(Integer orderId, OrderRequestDTO orderRequestDTO) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        // Check if update is allowed (within 2 hours from createdAt)
+        LocalDateTime now = LocalDateTime.now();
+        if (order.getCreatedAt().plusHours(2).isBefore(now)) {
+            throw new IllegalStateException("Không thể sửa đổi đơn hàng sau 2 giờ kể từ khi tạo");
         }
-        // Xóa order details trước
-        orderDetailRepository.deleteByOrderOrderID(orderID);
-        // Xóa order
-        orderRepository.deleteById(orderID);
+
+        // Update user if provided
+        if (orderRequestDTO.getUserID() != null) {
+            User user = userRepository.findById(orderRequestDTO.getUserID())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + orderRequestDTO.getUserID()));
+            order.setUser(user);
+        }
+
+        // Update bookingID if provided
+        if (orderRequestDTO.getBookingID() != null) {
+            order.setBookingID(orderRequestDTO.getBookingID());
+        }
+
+        // Update table if provided
+        if (orderRequestDTO.getTableID() != null) {
+            RestaurantTable table = restaurantTableRepository.findById(orderRequestDTO.getTableID())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bàn với ID: " + orderRequestDTO.getTableID()));
+
+            // Check table status
+            if (!table.getStatus().getStatusName().equals(EStatus.AVAILABLE.getName())) {
+                throw new IllegalStateException("Bàn không sẵn sàng để đặt");
+            }
+
+            order.setRestaurantTable(table);
+        }
+
+        // Update status if provided
+        if (orderRequestDTO.getStatusId() != null) {
+            Status status = statusRepository.findById(orderRequestDTO.getStatusId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái với ID: " + orderRequestDTO.getStatusId()));
+            order.setStatus(status);
+        }
+
+        // Update order details if provided
+        if (orderRequestDTO.getOrderDetails() != null) {
+            // Remove existing order details
+            orderDetailRepository.deleteByOrderId(orderId);
+
+            // Add new order details
+            List<OrderDetail> newOrderDetails = new ArrayList<>();
+            // Validate for duplicate mealIDs
+            List<Integer> mealIds = orderRequestDTO.getOrderDetails().stream()
+                    .map(OrderDetailRequest::getMealID)
+                    .collect(Collectors.toList());
+            if (mealIds.stream().distinct().count() != mealIds.size()) {
+                throw new IllegalStateException("Danh sách món ăn chứa mealID trùng lặp");
+            }
+
+            for (OrderDetailRequest detailRequest : orderRequestDTO.getOrderDetails()) {
+                Meal meal = mealRepository.findById(detailRequest.getMealID())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + detailRequest.getMealID()));
+
+                OrderDetail detail = OrderDetail.builder()
+                        .id(new KeyOrderDetailId(orderId, detailRequest.getMealID()))
+                        .order(order)
+                        .meal(meal)
+                        .quantity(detailRequest.getQuantity())
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                detail.calculateSubTotal();
+                newOrderDetails.add(detail);
+            }
+            order.setOrderDetails(newOrderDetails);
+        }
+
+        order.setUpdatedAt(LocalDateTime.now());
+        Order updatedOrder = orderRepository.save(order);
+
+        double totalAmount = updatedOrder.getOrderDetails().stream()
+                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
+                .sum();
+
+        return mapToOrderDTO(updatedOrder);
     }
 
     @Override
-    public Double getTotalRevenue(LocalDateTime startDate, LocalDateTime endDate) {
-        BigDecimal total = orderRepository.getTotalRevenueByDateRange(startDate, endDate);
-        return total != null ? total.doubleValue() : 0.0;
-    }
+    @Transactional
+    public void deleteOrder(Integer orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
-    // @Override
-    // public Map<String, Object> getRevenueReport(LocalDateTime startDate,
-    // LocalDateTime endDate) {
-    // Double totalRevenue = getTotalRevenue(startDate, endDate);
-    // List<Order> orders = orderRepository.findByOrderDateBetween(startDate,
-    // endDate);
-
-    // Map<String, Object> report = new HashMap<>();
-    // report.put("totalRevenue", totalRevenue);
-    // report.put("totalOrders", orders.size());
-    // report.put("startDate", startDate);
-    // report.put("endDate", endDate);
-
-    // // Thêm thông tin chi tiết
-    // Map<String, Long> statusCount = orders.stream()
-    // .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
-    // report.put("ordersByStatus", statusCount);
-
-    // return report;
-    // }
-
-    private OrderDTO convertToDTO(Order order) {
-        OrderDTO dto = new OrderDTO();
-        dto.setOrderID(order.getOrderID());
-        dto.setUserID(order.getUser().getUserID());
-        dto.setUserName(order.getUser().getFullName());
-        dto.setBookingID(order.getBookingID());
-
-        if (order.getRestaurantTable() != null) {
-            dto.setTableID(order.getRestaurantTable().getTableID());
-            dto.setTableName(order.getRestaurantTable().getTableName());
+        // Check if cancellation is allowed (within 2 hours from createdAt)
+        LocalDateTime now = LocalDateTime.now();
+        if (order.getCreatedAt().plusHours(2).isBefore(now)) {
+            throw new IllegalStateException("Không thể hủy đơn hàng sau 2 giờ kể từ khi tạo");
         }
 
-        dto.setOrderDate(order.getOrderDate());
-        dto.setStatusId(order.getStatus().getStatusID());
-//        dto.setCreatedAt(LocalDateTime.now());
-        dto.setUpdatedAt(LocalDateTime.now());
-        // Tính tổng tiền từ order details
-        BigDecimal total = orderDetailRepository.sumSubTotalByOrderOrderID(order.getOrderID());
-        dto.setTotalAmount(total != null ? total.doubleValue() : 0.0);
-
-        return dto;
+        // Set status to CANCELLED instead of deleting
+        Status cancelledStatus = statusRepository.findByStatusName(EStatus.CANCELLED.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái CANCELLED"));
+        order.setStatus(cancelledStatus);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
     }
 
-    private OrderDetailDTO convertDetailToDTO(OrderDetail detail) {
-        OrderDetailDTO dto = new OrderDetailDTO();
-        dto.setOrderID(detail.getOrder().getOrderID());
-        dto.setMealID(detail.getMeal().getMealID());
-//        dto.setMealName(detail.getMeal().getMealName());
-        dto.setQuantity(detail.getQuantity());
-        // dto.setUnitPrice(detail.getMeal().getPrice().doubleValue());
-        dto.setSubTotal(detail.getSubTotal().doubleValue());
-//        dto.setCreateAt(LocalDateTime.now());
-        dto.setUpdateAt(LocalDateTime.now());
-        return dto;
-    }
+    private OrderDTO mapToOrderDTO(Order order) {
+        List<OrderDetailDTO> detailDTOs = order.getOrderDetails() != null
+                ? order.getOrderDetails().stream()
+                .map(detail -> OrderDetailDTO.builder()
+                        .orderID(detail.getOrder().getOrderID())
+                        .mealID(detail.getMeal().getMealID())
+                        .mealName(detail.getMeal().getMealName())
+                        .mealPrice(detail.getMeal().getPrice())
+                        .quantity(detail.getQuantity())
+                        .subTotal(detail.getSubTotal())
+                        .createAt(detail.getCreatedAt())
+                        .updateAt(detail.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList())
+                : null;
 
+        return OrderDTO.builder()
+                .orderID(order.getOrderID())
+                .userID(order.getUser().getUserID())
+                .userName(order.getUser().getFullName())
+                .bookingID(order.getBookingID())
+                .tableID(order.getRestaurantTable().getTableID())
+                .tableName(order.getRestaurantTable().getTableName())
+                .orderDate(order.getOrderDate())
+                .statusId(order.getStatus().getStatusID())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .orderDetails(detailDTOs)
+                .build();
+    }
 }

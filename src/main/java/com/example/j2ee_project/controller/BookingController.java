@@ -1,7 +1,9 @@
 package com.example.j2ee_project.controller;
 
+import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.BookingDTO;
 import com.example.j2ee_project.model.request.booking.BookingRequestDTO;
+import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.booking.BookingService;
 import jakarta.validation.Valid;
@@ -59,6 +61,21 @@ public class BookingController {
     public ResponseEntity<?> updateBooking(@PathVariable Integer bookingId, @Valid @RequestBody BookingRequestDTO bookingRequestDTO) {
         BookingDTO response = bookingService.updateBooking(bookingId, bookingRequestDTO);
         return responseHandler.responseSuccess("Cập nhật booking thành công", response);
+    }
+
+    @PostMapping("/cancel/{bookingId}")
+    public ResponseEntity<?> cancelBooking(@PathVariable Integer bookingId) {
+        try {
+            ResponseData response = bookingService.cancelBooking(bookingId);
+            return responseHandler.responseSuccess("Hủy booking thành công", response);
+        } catch (IllegalStateException ex) {
+            return responseHandler.responseError(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (ResourceNotFoundException ex) {
+            return responseHandler.handleNotFound(ex.getMessage());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return responseHandler.handleServerError("Đã xảy ra lỗi khi hủy booking: " + ex.getMessage());
+        }
     }
 
     @DeleteMapping("/{bookingId}")

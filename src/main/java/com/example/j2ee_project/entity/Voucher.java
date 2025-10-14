@@ -9,7 +9,11 @@ import java.util.List;
 @Table(name = "vouchers")
 public class Voucher {
     @Id
-    @Column(name = "vouchercode", length = 10)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "voucherid")
+    private Integer voucherId;
+
+    @Column(name = "vouchercode", length = 10, unique = true)
     private String voucherCode;
 
     @Column(name = "description", nullable = false, length = 50)
