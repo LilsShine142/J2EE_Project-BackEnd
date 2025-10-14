@@ -13,7 +13,7 @@ public class TableTypesRequest {
 
     @NotNull(message = "Số lượng khách không được để trống")
     @Min(value = 1, message = "Số lượng khách phải lớn hơn 0")
-    private Integer numberOfGuests;
+    private Integer Capacity;
 
     private LocalDateTime createdAt;
 

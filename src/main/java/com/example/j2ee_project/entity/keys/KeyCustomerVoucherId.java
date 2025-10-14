@@ -13,6 +13,6 @@ public class KeyCustomerVoucherId implements Serializable {
     @Column(name = "userid")
     private Integer userID;
 
-    @Column(name = "vouchercode")
-    private String voucherCode;
+    @Column(name = "voucherid")
+    private Integer voucherId;
 }

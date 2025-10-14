@@ -58,7 +58,7 @@ public class TableService implements TableServiceInterface {
     }
 
     @Override
-    public Page<RestaurantTableDTO> getAllTables(int offset, int limit, String search, Integer statusId, Integer numberOfGuests) {
+    public Page<RestaurantTableDTO> getAllTables(int offset, int limit, String search, Integer statusId, Integer capacity) {
         if (offset < 0) offset = 0;
         if (limit <= 0) limit = 10;
         if (limit > 100) limit = 100;
@@ -67,14 +67,14 @@ public class TableService implements TableServiceInterface {
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
 
-        Page<RestaurantTable> tablePage = restaurantTableRepository.findByFilters(search, statusId, numberOfGuests, pageable);
+        Page<RestaurantTable> tablePage = restaurantTableRepository.findByFilters(search, statusId, capacity, pageable);
 
         return tablePage.map(this::mapToTableDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer numberOfGuests) {
+    public Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity) {
         if (offset < 0) offset = 0;
         if (limit <= 0) limit = 10;
         if (limit > 100) limit = 100;
@@ -84,7 +84,7 @@ public class TableService implements TableServiceInterface {
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
         Page<RestaurantTable> page = restaurantTableRepository.findAvailableTables(
-                availableStatus, numberOfGuests, startTime, endTime, excludedStatuses, pageable);
+                availableStatus, capacity, startTime, endTime, excludedStatuses, pageable);
 
         return page.map(this::mapToTableDTO);
     }
@@ -149,7 +149,7 @@ public class TableService implements TableServiceInterface {
                 .createdAt(table.getCreatedAt())
                 .updatedAt(table.getUpdatedAt())
                 .statusId(table.getStatus().getStatusID())
-                .numberOfGuests(table.getTableType().getNumberOfGuests());
+                .capacity(table.getTableType().getCapacity());
         return builder.build();
     }
 }

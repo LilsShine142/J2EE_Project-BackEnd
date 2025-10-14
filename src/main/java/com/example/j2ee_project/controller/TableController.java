@@ -33,8 +33,8 @@ public class TableController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer statusId,
-            @RequestParam(required = false) Integer numberOfGuests) {
-        Page<RestaurantTableDTO> tablePage = tableService.getAllTables(offset, limit, search, statusId, numberOfGuests);
+            @RequestParam(required = false) Integer capacity) {
+        Page<RestaurantTableDTO> tablePage = tableService.getAllTables(offset, limit, search, statusId, capacity);
         return responseHandler.responseSuccess("Lấy danh sách bàn thành công", tablePage);
     }
 
@@ -45,8 +45,8 @@ public class TableController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bookingDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(required = false) Integer numberOfGuests) {
-        Page<RestaurantTableDTO> tablePage = tableService.getAvailableTables(offset, limit, bookingDate, startTime, endTime, numberOfGuests);
+            @RequestParam(required = false) Integer capacity) {
+        Page<RestaurantTableDTO> tablePage = tableService.getAvailableTables(offset, limit, bookingDate, startTime, endTime, capacity);
         return responseHandler.responseSuccess("Lấy danh sách bàn khả dụng thành công", tablePage);
     }
 

@@ -18,8 +18,8 @@ public class CustomerVoucher {
     private User user;
 
     @ManyToOne
-    @MapsId("voucherCode")
-    @JoinColumn(name = "vouchercode", nullable = false)
+    @MapsId("voucherId")
+    @JoinColumn(name = "voucherid", nullable = false)
     private Voucher voucher;
 
     @Column(name = "receiveddate")
@@ -28,13 +28,4 @@ public class CustomerVoucher {
     @Column(name = "status", length = 20)
     private String status;
 
-    public CustomerVoucher(User user, Voucher voucher, String status) {
-        this.id = new KeyCustomerVoucherId(user.getUserID(), voucher.getVoucherCode());
-        this.user = user;
-        this.voucher = voucher;
-        this.status = status;
-    }
-
-    public CustomerVoucher() {
-    }
 }

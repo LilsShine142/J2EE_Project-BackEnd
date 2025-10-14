@@ -19,7 +19,13 @@ public enum EStatus {
     SUSPENDED(11, "Suspended"), // User bị đình chỉ tạm thời
     REJECTED(12, "Rejected"), // Booking/Order bị từ chối
     UNVERIFIED(13, "Unverified"), // Tài khoản chưa xác thực (users)
-    VERIFIED(14, "Verified"); // Tài khoản đã xác thực (users)
+    VERIFIED(14, "Verified"), // Tài khoản đã xác thực (users)
+    PAID(15, "Paid"), // Đã thanh toán
+    PARTIALLY_PAID(16, "PartiallyPaid"), // Thanh toán một phần
+    FAILED(17, "Failed"), // Thanh toán thất bại
+    REFUNDED(18, "Refunded"), // Đã hoàn tiền
+    PROCESSING(19, "Processing"), // Đang xử lý thanh toán
+    EXPIRED(20, "Expired"); // Hóa đơn hết hạn
 
     private final int code;
     private final String name;

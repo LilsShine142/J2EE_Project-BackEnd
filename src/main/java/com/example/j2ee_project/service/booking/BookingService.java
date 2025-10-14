@@ -7,12 +7,14 @@ import com.example.j2ee_project.model.dto.BookingDTO;
 import com.example.j2ee_project.model.dto.BookingDetailDTO;
 import com.example.j2ee_project.model.request.booking.BookingDetailRequest;
 import com.example.j2ee_project.model.request.booking.BookingRequestDTO;
+import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.repository.BookingDetailRepository;
 import com.example.j2ee_project.repository.BookingRepository;
 import com.example.j2ee_project.repository.MealRepository;
 import com.example.j2ee_project.repository.RestaurantTableRepository;
 import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.repository.UserRepository;
+import com.example.j2ee_project.service.bill.BillService;
 import com.example.j2ee_project.utils._enum.EStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +38,7 @@ public class BookingService implements BookingServiceInterface {
     private final MealRepository mealRepository;
     private final BookingDetailRepository bookingDetailRepository;
     private final StatusRepository statusRepository;
+    private final BillService billService;
 
     private List<BookingDetail> addBookingDetails;
 
@@ -68,7 +69,7 @@ public class BookingService implements BookingServiceInterface {
         }
 
         // Check table capacity
-        if (bookingRequestDTO.getNumberOfGuests() > table.getTableType().getNumberOfGuests()) {
+        if (bookingRequestDTO.getNumberOfGuests() > table.getTableType().getCapacity()) {
             throw new IllegalStateException("Bàn không đủ sức chứa");
         }
 
@@ -94,7 +95,6 @@ public class BookingService implements BookingServiceInterface {
 
         // Save booking
         Booking savedBooking = bookingRepository.save(booking);
-
 
         // Handle booking details (meals) if provided
         if (bookingRequestDTO.getMeals() != null && !bookingRequestDTO.getMeals().isEmpty()) {
@@ -179,7 +179,7 @@ public class BookingService implements BookingServiceInterface {
 
             // Check table capacity
             if (bookingRequestDTO.getNumberOfGuests() != null &&
-                    bookingRequestDTO.getNumberOfGuests() > table.getTableType().getNumberOfGuests()) {
+                    bookingRequestDTO.getNumberOfGuests() > table.getTableType().getCapacity()) {
                 throw new IllegalStateException("Bàn không đủ sức chứa");
             }
 
@@ -245,6 +245,43 @@ public class BookingService implements BookingServiceInterface {
         booking.setUpdatedAt(LocalDateTime.now());
         Booking updatedBooking = bookingRepository.save(booking);
         return mapToBookingDTO(updatedBooking);
+    }
+
+    @Override
+    @Transactional
+    public ResponseData cancelBooking(Integer bookingId) throws Exception {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy booking với ID: " + bookingId));
+
+        LocalDateTime now = LocalDateTime.now();
+        Status cancelledStatus = statusRepository.findByStatusName(EStatus.CANCELLED.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái CANCELLED"));
+
+        // Hủy bill liên quan (nếu có) và xử lý hoàn tiền
+        ResponseData billResponse = billService.cancelBillForBooking(bookingId);
+
+        // Tạo phản hồi tổng hợp
+        ResponseData response = new ResponseData();
+        response.setStatus(200);
+        response.setSuccess(true);
+        response.setMessage("Hủy booking thành công");
+
+        // Tích hợp thông tin booking và bill
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("booking", mapToBookingDTO(booking));
+        responseData.put("bill", billResponse.getData());
+        responseData.put("billMessage", billResponse.getMessage());
+        responseData.put("billSuccess", billResponse.isSuccess());
+        response.setData(responseData);
+
+        // Nếu hủy bill thất bại, cập nhật trạng thái phản hồi
+        if (!billResponse.isSuccess()) {
+            response.setSuccess(false);
+            response.setStatus(billResponse.getStatus());
+            response.setMessage("Hủy booking thành công nhưng hủy bill thất bại: " + billResponse.getMessage());
+        }
+
+        return response;
     }
 
     @Override

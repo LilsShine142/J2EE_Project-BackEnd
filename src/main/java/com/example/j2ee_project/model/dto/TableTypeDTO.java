@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public class TableTypeDTO {
     private Integer tableTypeID;
     private String typeName;
-    private Integer numberOfGuests;
+    private Integer capacity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -16,7 +16,7 @@ public class OrderRequestDTO {
     private Integer tableID;
 
     @NotEmpty(message = "Danh sách món ăn không được để trống")
-    private List<OrderDetailRequest> orderDetail;
+    private List<OrderDetailRequest> orderDetails;
 
     @NotNull(message = "Trạng thái không được để trống")
     private Integer statusId;

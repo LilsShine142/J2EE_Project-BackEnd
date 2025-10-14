@@ -1,8 +1,10 @@
 package com.example.j2ee_project.entity;
 
 import com.example.j2ee_project.entity.keys.KeyOrderDetailId;
+import com.example.j2ee_project.model.dto.BillDTO;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -33,11 +35,13 @@ public class OrderDetail {
     @Column(name = "subtotal", precision = 10, scale = 2)
     private BigDecimal subTotal = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "createdat")
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updatedat")
-    private LocalDateTime updatedAt;
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     // Auto calculate subtotal
     @PrePersist

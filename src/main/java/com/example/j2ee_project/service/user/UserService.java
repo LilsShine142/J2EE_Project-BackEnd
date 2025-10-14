@@ -78,6 +78,22 @@ public class UserService implements UserDetailsService {
         user.setStatus(status);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
+        // Tạo mật khẩu random và gửi email
+//        String randomPassword = UUID.randomUUID().toString().substring(0, 8); // Mật khẩu random 8 ký tự
+//        // Hash password and save
+//        user.setPassword(/* hash randomPassword */);
+//
+//        User saved = userRepository.save(user);
+//
+//        // Gửi email mật khẩu random
+//        emailService.sendRandomPassword(saved, randomPassword);
+//
+//        // Gửi mã xác nhận
+//        emailService.sendVerificationCode(saved);
+
+        // Tạo và gửi voucher chào mừng
+//        String voucherCode = voucherService.generateUniqueVoucherForUser(saved.getUserID());
+//        voucherService.sendVoucherToUser(saved.getUserID(), voucherCode);
 
         Integer roleId = userRequest.getRoleId();
         if (roleId == null) {
