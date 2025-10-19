@@ -34,8 +34,8 @@ build/
 
 # Application properties
 src/main/resources/application.properties
-# Environment variables
+
+# Environment Variables
 .env
 *.env
-.env.*
 !.env.example

@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.StatusDTO;
 import com.example.j2ee_project.model.request.status.StatusRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.status.StatusServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/statuses")
+@Tag(name = "Status Management", description = "APIs for managing system or entity statuses")
 public class StatusController {
 
     private final StatusServiceInterface statusService;

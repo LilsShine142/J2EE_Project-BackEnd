@@ -6,6 +6,7 @@ import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.bill.BillService;
 import com.example.j2ee_project.service.payment.PaymentService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
+@Tag(name = "Payment Management", description = "APIs for managing payment transactions")
 public class PaymentController {
 
     private final BillService billService;

@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.OrderDTO;
 import com.example.j2ee_project.model.request.order.OrderRequestDTO;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.order.OrderService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/orders")
+@Tag(name = "Order Management", description = "APIs for managing restaurant orders")
 public class OrderController {
     private final OrderService orderService;
     private final ResponseHandler responseHandler;

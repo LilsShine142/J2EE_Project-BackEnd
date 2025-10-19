@@ -36,9 +36,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/users/register").permitAll()
-                        .requestMatchers("/api/public/**", "/api/payment/callback", "/api/payment/ipn").permitAll()
+                        .requestMatchers("/api/public/**", "/api/payment/callback", "/api/payment/ipn","/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // .requestMatchers("/api/users/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

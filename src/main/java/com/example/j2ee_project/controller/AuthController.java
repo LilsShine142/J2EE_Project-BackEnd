@@ -5,6 +5,7 @@ import com.example.j2ee_project.model.request.auth.LoginRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.user.UserService;
 import com.example.j2ee_project.utils.jwt.JwtTokenProvider;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication Management", description = "APIs for user authentication and login operations")
 public class AuthController {
 
     private final UserService userService;

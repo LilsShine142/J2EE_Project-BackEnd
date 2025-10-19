@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.CategoryDTO;
 import com.example.j2ee_project.model.request.category.CategoryRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.category.CategoryServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/categories")
+@Tag(name = "Category Management", description = "APIs for managing restaurant categories")
 public class CategoryController {
 
     private final CategoryServiceInterface categoryService;
