@@ -3,9 +3,12 @@ package com.example.j2ee_project.controller;
 import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.request.email.EmailRequest;
+import com.example.j2ee_project.model.request.email.EmailVerificationRequest;
+import com.example.j2ee_project.model.request.email.PasswordResetRequest;
 import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.email.EmailServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/emails")
+@Tag(name = "Email Management", description = "APIs for sending and managing email notifications")
 @RequiredArgsConstructor
 public class EmailController {
 
@@ -81,9 +85,17 @@ public class EmailController {
      */
     @PostMapping("/send-verification")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    public ResponseEntity<ResponseData> sendVerificationCode(@RequestBody User newUser) {
+    public ResponseEntity<ResponseData> sendVerificationCode(@Valid @RequestBody EmailVerificationRequest request, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return responseHandler.handleValidationErrors(bindingResult);
+        }
+
         try {
-            emailService.sendVerificationCode(newUser);
+            User user = new User();
+            user.setUserID(request.getUserId());
+            user.setEmail(request.getEmail());
+            user.setFullName(request.getFullName()); // Nếu cần thêm thông tin
+            emailService.sendVerificationCode(user);
             return responseHandler.responseSuccess("Email xác nhận đã được gửi", null);
         } catch (IllegalArgumentException e) {
             return responseHandler.handleBadRequest(e.getMessage());
@@ -97,8 +109,18 @@ public class EmailController {
      */
     @PostMapping("/send-password-reset")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    public ResponseEntity<ResponseData> sendRandomPassword(@RequestBody User user, @RequestParam String randomPassword) {
+    public ResponseEntity<ResponseData> sendRandomPassword(@Valid @RequestBody PasswordResetRequest request, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return responseHandler.handleValidationErrors(bindingResult);
+        }
+
         try {
+            // Tạo mật khẩu ngẫu nhiên
+            String randomPassword = emailService.generateRandomPassword();
+
+            User user = new User();
+            user.setUserID(request.getUserId());
+            user.setEmail(request.getEmail());
             emailService.sendRandomPassword(user, randomPassword);
             return responseHandler.responseSuccess("Email đặt lại mật khẩu đã được gửi", null);
         } catch (IllegalArgumentException e) {
@@ -113,12 +135,20 @@ public class EmailController {
      */
     @PostMapping("/send-welcome")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    public ResponseEntity<ResponseData> sendWelcomeEmail(@RequestBody User newUser) {
+    public ResponseEntity<ResponseData> sendWelcomeEmail(@Valid @RequestBody EmailVerificationRequest request, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return responseHandler.handleValidationErrors(bindingResult);
+        }
+
         try {
+            User user = new User();
+            user.setUserID(request.getUserId());
+            user.setEmail(request.getEmail());
+            user.setFullName(request.getFullName()); // Nếu cần thêm thông tin
             Map<String, Object> variables = new HashMap<>();
             variables.put("welcomeMessage", "Chào mừng bạn đến với hệ thống của chúng tôi!");
             emailService.sendEmailToUserById(
-                    newUser.getUserID(),
+                    user.getUserID(),
                     "Chào mừng bạn!",
                     "Cảm ơn bạn đã đăng ký tài khoản. Chúng tôi rất vui khi bạn tham gia cộng đồng của chúng tôi!",
                     variables

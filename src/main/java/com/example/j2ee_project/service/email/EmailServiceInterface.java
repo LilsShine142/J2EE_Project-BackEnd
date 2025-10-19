@@ -40,4 +40,9 @@ public interface EmailServiceInterface {
      * Gửi thông báo về voucher mới cho nhiều user
      */
     void sendVoucherNotificationToUsers(List<Integer> userIds, String voucherCode, String voucherDescription);
+
+    /**
+     * Random password generator
+     */
+    String generateRandomPassword();
 }

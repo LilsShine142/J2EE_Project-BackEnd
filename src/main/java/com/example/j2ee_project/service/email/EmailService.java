@@ -16,10 +16,7 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -129,6 +126,9 @@ public class EmailService implements EmailServiceInterface {
      */
     @Transactional
     public void sendVerificationCode(User newUser) {
+        if (newUser.getEmail() == null || newUser.getEmail().isEmpty()) {
+            throw new IllegalArgumentException("Email is required for verification");
+        }
         String verificationCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         newUser.setVerifyCode(verificationCode);
         userRepository.save(newUser);
@@ -153,6 +153,9 @@ public class EmailService implements EmailServiceInterface {
      */
     @Transactional
     public void sendRandomPassword(User user, String randomPassword) {
+        if (user.getEmail() == null || user.getEmail().isEmpty()) {
+            throw new IllegalArgumentException("Email is required for password reset");
+        }
         Map<String, Object> variables = new HashMap<>();
         variables.put("Mật khẩu tạm thời", randomPassword);
 
@@ -259,5 +262,19 @@ public class EmailService implements EmailServiceInterface {
         emailContent.append("\nTrân trọng,\nĐội ngũ hỗ trợ");
 
         return emailContent.toString();
+    }
+
+    /**
+     * Hàm tạo random password
+     */
+    // Phương thức tiện ích để tạo mật khẩu ngẫu nhiên
+    public String generateRandomPassword() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(10); // Độ dài 10 ký tự
+        for (int i = 0; i < 10; i++) {
+            sb.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return sb.toString();
     }
 }

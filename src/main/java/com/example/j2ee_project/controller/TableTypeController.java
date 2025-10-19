@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.TableTypeDTO;
 import com.example.j2ee_project.model.request.table.TableTypesRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.tableTypes.TableTypeServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/tabletypes")
+@Tag(name = "Table Type Management", description = "APIs for managing table types in the restaurant")
 public class TableTypeController {
 
     private final TableTypeServiceInterface tableTypeService;

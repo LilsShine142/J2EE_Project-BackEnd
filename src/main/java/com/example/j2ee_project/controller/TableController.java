@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.RestaurantTableDTO;
 import com.example.j2ee_project.model.request.table.TableRequestDTO;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.table.TableService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/tables")
+@Tag(name = "Table Management", description = "APIs for managing restaurant tables")
 @RequiredArgsConstructor
 public class TableController {
     private final TableService tableService;

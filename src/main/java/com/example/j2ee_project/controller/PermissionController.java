@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.PermissionDTO;
 import com.example.j2ee_project.model.request.permission.PermissionRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.permission.PermissionServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/permissions")
+@Tag(name = "Permission Management", description = "APIs for managing user permissions")
 public class PermissionController {
 
     private final PermissionServiceInterface permissionService;

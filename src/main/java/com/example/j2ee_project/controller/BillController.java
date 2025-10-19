@@ -15,6 +15,7 @@ import com.example.j2ee_project.repository.BookingRepository;
 import com.example.j2ee_project.repository.OrderRepository;
 import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.service.bill.BillService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/bill")
+@Tag(name = "Bill Management", description = "APIs for managing restaurant bills and payments")
 @RequiredArgsConstructor
 public class BillController {
 

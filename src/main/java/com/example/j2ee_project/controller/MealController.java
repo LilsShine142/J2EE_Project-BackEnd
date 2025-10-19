@@ -1,5 +1,6 @@
 package com.example.j2ee_project.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/meals")
+@Tag(name = "Meal Management", description = "APIs for managing restaurant meals and menu items")
 @RequiredArgsConstructor
 public class MealController {
     private final MealService mealService;

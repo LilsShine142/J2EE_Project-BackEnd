@@ -4,6 +4,7 @@ import com.example.j2ee_project.model.dto.VoucherDTO;
 import com.example.j2ee_project.model.request.voucher.VoucherRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.voucher.VoucherServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/vouchers")
+@Tag(name = "Voucher Management", description = "APIs for managing restaurant vouchers")
 public class VoucherController {
 
     private final VoucherServiceInterface voucherService;

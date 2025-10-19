@@ -5,6 +5,7 @@ import com.example.j2ee_project.model.dto.UserDTO;
 import com.example.j2ee_project.model.request.user.UserRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.user.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
+@Tag(name = "User Management", description = "APIs for managing user accounts")
 public class UserController {
     private final UserService userService;
     private final ResponseHandler responseHandler;
