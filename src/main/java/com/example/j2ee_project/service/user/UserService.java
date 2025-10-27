@@ -11,6 +11,7 @@ import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.service.role.RoleService;
 import com.example.j2ee_project.utils._enum.EStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -122,6 +124,60 @@ public class UserService implements UserDetailsService {
         return users.stream()
                 .map(this::mapToUserDTO)
                 .collect(Collectors.toList());
+    }
+
+    // Xử lý OAuth2 user (Google hoặc Facebook)
+    public User processOAuthUser(OAuth2User oAuth2User, String provider) {
+        String emailAttribute = oAuth2User.getAttribute("email");
+        final String name = oAuth2User.getAttribute("name");
+        final String providerId = provider.equals("Facebook") ? oAuth2User.getAttribute("id") :
+                provider.equals("Google") ? oAuth2User.getAttribute("sub") : null;
+
+        // Kiểm tra email null
+        final String email;
+        if (emailAttribute == null) {
+            throw new RuntimeException("Email không khả dụng. Vui lòng xác minh email trong tài khoản " + provider + " của bạn.");
+        } else {
+            email = emailAttribute;
+        }
+
+        // Kiểm tra email xác minh cho Google
+        if (provider.equals("Google")) {
+            Boolean emailVerified = oAuth2User.getAttribute("email_verified");
+            if (emailVerified == null || !emailVerified) {
+                throw new RuntimeException("Email chưa được xác minh. Vui lòng xác minh email trong tài khoản Google của bạn.");
+            }
+        }
+
+        // Log để debug
+        System.out.println("Processing " + provider + " user with email: " + email);
+        System.out.println(provider + " attributes: " + oAuth2User.getAttributes());
+
+        return userRepository.findByEmail(email)
+                .map(user -> {
+                    // Kiểm tra trạng thái INACTIVE
+                    if (EStatus.INACTIVE.equals(user.getStatus().getStatusName())) {
+                        throw new DisabledException("Tài khoản đã bị vô hiệu hóa");
+                    }
+                    return user;
+                })
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setEmail(email);
+                    newUser.setUsername(email); // Dùng email làm username
+                    newUser.setFullName(name != null ? name : provider + " User");
+                    newUser.setPassword(null); // Không cần password cho Google, Facebook user
+                    newUser.setJoinDate(LocalDateTime.now());
+                    newUser.setTotalSpent(BigDecimal.valueOf(0.0));
+                    newUser.setLoyaltyPoints(0);
+                    newUser.setStatusWork(null);
+                    newUser.setCreatedAt(LocalDateTime.now());
+                    newUser.setUpdatedAt(LocalDateTime.now());
+                    newUser.setRoleId(1); // Default USER role
+                    newUser.setStatus(statusRepository.findById(EStatus.UNVERIFIED.getCode())
+                            .orElseThrow(() -> new RuntimeException("Không tìm thấy status Unverified")));
+                    return userRepository.save(newUser);
+                });
     }
 
     // Hàm lấy danh sách người dùng kèm phân trang và lọc
