@@ -6,11 +6,7 @@ import com.example.j2ee_project.model.dto.BillDTO;
 import com.example.j2ee_project.model.dto.PaymentDTO;
 import com.example.j2ee_project.model.dto.RefundPaymentDTO;
 import com.example.j2ee_project.model.response.ResponseData;
-import com.example.j2ee_project.repository.BillRepository;
-import com.example.j2ee_project.repository.BookingRepository;
-import com.example.j2ee_project.repository.OrderRepository;
-import com.example.j2ee_project.repository.StatusRepository;
-import com.example.j2ee_project.repository.VoucherRepository;
+import com.example.j2ee_project.repository.*;
 import com.example.j2ee_project.service.payment.PaymentService;
 import com.example.j2ee_project.utils._enum.EStatus;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +34,7 @@ public class BillService implements BillServiceInterface {
     private final StatusRepository statusRepository;
     private final PaymentService paymentService;
     private final VoucherRepository voucherRepository;
+    private final RestaurantTableRepository restaurantTableRepository;
 
     private BillDTO mapToBillDTO(Bill bill) {
         BillDTO billDTO = new BillDTO();
@@ -366,5 +363,67 @@ public class BillService implements BillServiceInterface {
         bill.setUpdatedAt(LocalDateTime.now());
 
         return mapToBillDTO(billRepository.save(bill));
+    }
+
+    /**
+     * TẠO HÓA ĐƠN CUỐI CÙNG TỪ ORDER
+     */
+    @Transactional
+    public BillDTO createFinalBillFromOrder(Order order, double paymentPercentage, String voucherCode) {
+        if (paymentPercentage != 100.0) {
+            throw new IllegalArgumentException("Xuất hóa đơn cuối phải thanh toán 100%");
+        }
+
+        BigDecimal total = order.getOrderDetails().stream()
+                .map(d -> d.getMeal().getPrice().multiply(BigDecimal.valueOf(d.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Áp dụng voucher nếu có
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            // TODO: validate voucher
+            total = total.multiply(BigDecimal.valueOf(0.9)); // ví dụ giảm 10%
+        }
+
+        Bill bill = new Bill();
+        bill.setOrder(order);
+        bill.setBooking(order.getBookingID() != null ?
+                bookingRepository.findById(order.getBookingID()).orElse(null) : null);
+        bill.setTotalAmount(total);
+        bill.setPaymentMethod("CASH"); // hoặc từ Order
+        bill.setPaymentTime(LocalDateTime.now());
+        bill.setBillDate(LocalDate.now());
+        bill.setCreatedAt(LocalDateTime.now());
+        bill.setStatus(statusRepository.findByStatusName(EStatus.PAID.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái PAID")));
+
+        Bill saved = billRepository.save(bill);
+        return mapToBillDTO(saved);
+    }
+
+    /**
+     * HOÀN TẤT BOOKING SAU KHI XUẤT HÓA ĐƠN
+     */
+    @Transactional
+    public void completeBookingAfterCheckout(Integer bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy booking"));
+
+        // Cập nhật endTime
+        booking.setEndTime(LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
+
+        // Cập nhật trạng thái → COMPLETED
+        Status completed = statusRepository.findByStatusName(EStatus.COMPLETED.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái COMPLETED"));
+        booking.setStatus(completed);
+
+        // Giải phóng bàn
+        RestaurantTable table = booking.getRestaurantTable();
+        Status available = statusRepository.findByStatusName(EStatus.AVAILABLE.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái AVAILABLE"));
+        table.setStatus(available);
+
+        bookingRepository.save(booking);
+        restaurantTableRepository.save(table);
     }
 }

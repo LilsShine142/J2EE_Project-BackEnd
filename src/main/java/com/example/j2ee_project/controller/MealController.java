@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import jakarta.validation.Valid;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/meals")
 @Tag(name = "Meal Management", description = "APIs for managing restaurant meals and menu items")
@@ -40,6 +42,14 @@ public class MealController {
         return responseHandler.responseSuccess("Lấy danh sách món ăn thành công", mealPage);
     }
 
+    @GetMapping("/popular")
+    public ResponseEntity<?> getPopularMeals(
+            @RequestParam(defaultValue = "9") int limit) {
+
+        List<MealDTO> topMeals = mealService.getTopPopular(limit);
+        return responseHandler.responseSuccess("Lấy top món phổ biến thành công", topMeals);
+    }
+
     @GetMapping("/{mealID}")
     public ResponseEntity<?> getMealById(@PathVariable Integer mealID) {
         MealDTO response = mealService.getMealById(mealID);
@@ -56,5 +66,21 @@ public class MealController {
     public ResponseEntity<?> deleteMeal(@PathVariable Integer mealID) {
         mealService.deleteMeal(mealID);
         return responseHandler.responseSuccess("Xóa món ăn thành công", null);
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<?> getMealsByCategoryId(
+            @PathVariable Integer categoryId,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(required = false) Integer statusId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
+
+        Page<MealDTO> mealPage = mealService.getMealsByCategoryId(
+                categoryId, offset, limit, search, statusId, minPrice, maxPrice);
+
+        return responseHandler.responseSuccess("Lấy danh sách món ăn theo danh mục thành công", mealPage);
     }
 }

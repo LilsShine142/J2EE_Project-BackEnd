@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -139,6 +141,61 @@ public class MealService implements MealServiceInterface {
         mealRepository.deleteById(mealID);
     }
 
+    @Override
+    public Page<MealDTO> getMealsByCategoryId(
+            Integer categoryId,
+            int offset, int limit,
+            String search, Integer statusId,
+            Double minPrice, Double maxPrice) {
+
+        // Validate categoryId
+        if (categoryId == null) {
+            throw new IllegalArgumentException("categoryId là bắt buộc");
+        }
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Không tìm thấy category với ID: " + categoryId);
+        }
+
+        // Chuẩn hóa tham số phân trang & tìm kiếm
+        if (offset < 0) offset = 0;
+        if (limit <= 0) limit = 10;
+        if (limit > 100) limit = 100;
+        if (search == null) search = "";
+
+        // Validate price
+        if (minPrice != null && maxPrice != null) {
+            if (minPrice < 0 || maxPrice < 0) {
+                throw new IllegalArgumentException("Giá không được âm");
+            }
+            if (minPrice > maxPrice) {
+                throw new IllegalArgumentException("Giá tối thiểu không được lớn hơn giá tối đa");
+            }
+        }
+
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+
+        BigDecimal minPriceBD = minPrice != null ? BigDecimal.valueOf(minPrice) : null;
+        BigDecimal maxPriceBD = maxPrice != null ? BigDecimal.valueOf(maxPrice) : null;
+
+        // Gọi query với categoryId bắt buộc, các filter khác optional
+        Page<Meal> mealPage = mealRepository.findByFilters(
+                search, statusId, categoryId, minPriceBD, maxPriceBD, pageable);
+
+        return mealPage.map(this::mapToMealDTO);
+    }
+
+    @Override
+    public List<MealDTO> getTopPopular(int limit) {
+        if (limit < 1 || limit > 50) limit = 9; // Mặc định 9
+
+        Pageable pageable = PageRequest.of(0, limit);
+        Page<Meal> topMeals = mealRepository.findTopPopular(pageable);
+
+        return topMeals.getContent().stream()
+                .map(this::mapToMealDTO)
+                .collect(Collectors.toList());
+    }
+
     private MealDTO mapToMealDTO(Meal meal) {
         MealDTO.MealDTOBuilder builder = MealDTO.builder()
                 .mealID(meal.getMealID())
@@ -148,6 +205,7 @@ public class MealService implements MealServiceInterface {
                 .categoryID(meal.getCategory().getCategoryID())
                 .categoryName(meal.getCategory().getCategoryName())
                 .statusId(meal.getStatus().getStatusID())
+                .totalOrdered(meal.getTotalOrdered())
                 .createdAt(meal.getCreatedAt())
                 .updatedAt(meal.getUpdatedAt());
         return builder.build();

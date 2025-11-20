@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -128,5 +129,43 @@ public class BillController {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy order với ID: " + orderId));
         BillDTO bill = billService.createBillForOrder(order, paymentDTO.getPaymentMethod());
         return responseHandler.responseSuccess("Tạo hóa đơn cho order thành công", bill);
+    }
+
+    /**
+     * XUẤT HÓA ĐƠN CUỐI CÙNG TẠI QUÁN (từ Order)
+     * → Nhân viên bấm "Xuất hóa đơn" → hoàn tất Order + Booking + giải phóng bàn
+     */
+    @PostMapping("/checkout-at-restaurant")
+    public ResponseEntity<ResponseData> checkoutAtRestaurant(
+            @Valid @RequestBody BillForBookingRequestDTO request) {
+
+        try {
+            Integer bookingId = request.getBookingId();
+            if (bookingId == null) {
+                throw new IllegalArgumentException("bookingId là bắt buộc");
+            }
+
+            // 1. Tìm Order theo bookingID
+            Order order = orderRepository.findByBookingID(bookingId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Order cho booking ID: " + bookingId));
+
+            // 2. Tạo hóa đơn cuối cùng từ Order
+            BillDTO finalBill = billService.createFinalBillFromOrder(
+                    order,
+                    request.getPaymentPercentage(),
+                    request.getVoucherCode()
+            );
+
+            // 3. Hoàn tất Booking + giải phóng bàn
+            billService.completeBookingAfterCheckout(bookingId);
+
+            return responseHandler.responseSuccess(
+                    "Xuất hóa đơn thành công! Bàn đã được giải phóng.",
+                    finalBill
+            );
+
+        } catch (Exception e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -6,10 +6,10 @@ import lombok.Data;
 
 @Data
 public class BookingDetailRequest {
-    @NotNull
+//    @NotNull
     private Integer mealID;
 
-    @NotNull
+//    @NotNull
     @Min(1)
     private Integer quantity;
 

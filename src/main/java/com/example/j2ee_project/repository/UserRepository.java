@@ -29,13 +29,13 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     @Query("SELECT u FROM User u " +
             "WHERE (:username IS NULL OR u.username LIKE %:username%) " +
-            "AND (:email IS NULL OR u.email LIKE %:email%) " +
-            "AND (:status IS NULL OR u.status = :status) " +
+            "AND (:search IS NULL OR u.email LIKE %:search% OR u.fullName LIKE %:search%) " +
+            "AND (:statusId IS NULL OR u.status.statusID = :statusId) " +
             "AND (:roleId IS NULL OR u.roleId = :roleId)")
     Page<User> findUsersFiltered(
             @Param("username") String username,
-            @Param("email") String email,
-            @Param("status") String status,
+            @Param("search") String search,
+            @Param("statusId") Integer statusId,
             @Param("roleId") Integer roleId,
             Pageable pageable);
 }

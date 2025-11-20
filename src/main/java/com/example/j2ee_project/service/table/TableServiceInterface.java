@@ -11,7 +11,16 @@ public interface TableServiceInterface {
 
     Page<RestaurantTableDTO> getAllTables(int offset, int limit, String search, Integer statusId, Integer capacity);
 
-    Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity);
+//    Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity);
+
+    Page<RestaurantTableDTO> getAvailableTables(
+            int offset, int limit,
+            LocalDateTime bookingDate,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            Integer capacity,
+            Integer tableTypeId
+    );
 
     RestaurantTableDTO getTableById(Integer tableId);
 

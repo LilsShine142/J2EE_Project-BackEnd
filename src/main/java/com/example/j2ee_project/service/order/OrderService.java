@@ -21,10 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,8 +36,6 @@ public class OrderService implements OrderServiceInterface {
     private final MealRepository mealRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final StatusRepository statusRepository;
-
-    private List<OrderDetail> addOrderDetails;
 
     @Override
     @Transactional
@@ -74,15 +70,14 @@ public class OrderService implements OrderServiceInterface {
         Order savedOrder = orderRepository.save(order);
 
         // Handle order details if provided
+        List<OrderDetail> addOrderDetails = new ArrayList<>();
         if (orderRequestDTO.getOrderDetails() != null && !orderRequestDTO.getOrderDetails().isEmpty()) {
-            addOrderDetails = new ArrayList<>();
-            OrderDetail saveOrderDetail;
             for (OrderDetailRequest detailRequest : orderRequestDTO.getOrderDetails()) {
                 Meal meal = mealRepository.findById(detailRequest.getMealID())
                         .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + detailRequest.getMealID()));
 
                 OrderDetail detail = OrderDetail.builder()
-                        .id(new KeyOrderDetailId(savedOrder.getOrderID(), detailRequest.getMealID())) // Temporary orderID
+                        .id(new KeyOrderDetailId(savedOrder.getOrderID(), detailRequest.getMealID()))
                         .order(savedOrder)
                         .meal(meal)
                         .quantity(detailRequest.getQuantity())
@@ -91,17 +86,14 @@ public class OrderService implements OrderServiceInterface {
                         .build();
 
                 detail.calculateSubTotal();
-                saveOrderDetail = orderDetailRepository.save(detail);
+                OrderDetail saveOrderDetail = orderDetailRepository.save(detail);
                 addOrderDetails.add(saveOrderDetail);
             }
         }
 
-        // Calculate totalAmount
-        double totalAmount = savedOrder.getOrderDetails().stream()
-                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
-                .sum();
-
+        // Set orderDetails before calculating totalAmount
         savedOrder.setOrderDetails(addOrderDetails);
+
         return mapToOrderDTO(savedOrder);
     }
 
@@ -118,12 +110,7 @@ public class OrderService implements OrderServiceInterface {
 
         Page<Order> orderPage = orderRepository.findByFilters(search, statusId, userId, tableId, pageable);
 
-        return orderPage.map(order -> {
-            double totalAmount = order.getOrderDetails().stream()
-                    .mapToDouble(detail -> detail.getSubTotal().doubleValue())
-                    .sum();
-            return mapToOrderDTO(order);
-        });
+        return orderPage.map(this::mapToOrderDTO);
     }
 
     @Override
@@ -131,10 +118,6 @@ public class OrderService implements OrderServiceInterface {
     public OrderDTO getOrderById(Integer orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
-
-        double totalAmount = order.getOrderDetails().stream()
-                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
-                .sum();
 
         return mapToOrderDTO(order);
     }
@@ -219,10 +202,6 @@ public class OrderService implements OrderServiceInterface {
 
         order.setUpdatedAt(LocalDateTime.now());
         Order updatedOrder = orderRepository.save(order);
-
-        double totalAmount = updatedOrder.getOrderDetails().stream()
-                .mapToDouble(detail -> detail.getSubTotal().doubleValue())
-                .sum();
 
         return mapToOrderDTO(updatedOrder);
     }

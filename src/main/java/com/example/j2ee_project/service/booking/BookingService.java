@@ -55,12 +55,15 @@ public class BookingService implements BookingServiceInterface {
 
         // Check table availability
         List<String> excludedStatuses = Arrays.asList(EStatus.CANCELLED.getName(), EStatus.COMPLETED.getName());
+        LocalDateTime startTime = bookingRequestDTO.getStartTime();
+        LocalDateTime endTime = startTime.plusHours(5); // MẶC ĐỊNH 5 TIẾNG
+
         if (bookingRepository.existsOverlappingBooking(
                 bookingRequestDTO.getTableID(),
                 bookingRequestDTO.getStartTime(),
                 bookingRequestDTO.getEndTime(),
                 excludedStatuses)) {
-            throw new IllegalStateException("Bàn đã được đặt trong khung giờ này");
+            throw new IllegalStateException("Bàn đã được đặt hoặc đang sử dụng trong khung giờ này");
         }
 
         // Check table status
@@ -82,8 +85,8 @@ public class BookingService implements BookingServiceInterface {
         booking.setUser(user);
         booking.setRestaurantTable(table);
         booking.setBookingDate(bookingRequestDTO.getBookingDate());
-        booking.setStartTime(bookingRequestDTO.getStartTime());
-        booking.setEndTime(bookingRequestDTO.getEndTime());
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
         booking.setNotes(bookingRequestDTO.getNotes());
         booking.setNumberOfGuests(bookingRequestDTO.getNumberOfGuests());
         booking.setInitialPayment(bookingRequestDTO.getInitialPayment() != null ? bookingRequestDTO.getInitialPayment() : BigDecimal.ZERO);
@@ -265,6 +268,8 @@ public class BookingService implements BookingServiceInterface {
         response.setStatus(200);
         response.setSuccess(true);
         response.setMessage("Hủy booking thành công");
+        // Cập nhật trạng thái booking thành CANCELLED
+        booking.setStatus(cancelledStatus);
 
         // Tích hợp thông tin booking và bill
         Map<String, Object> responseData = new HashMap<>();
@@ -280,7 +285,7 @@ public class BookingService implements BookingServiceInterface {
             response.setStatus(billResponse.getStatus());
             response.setMessage("Hủy booking thành công nhưng hủy bill thất bại: " + billResponse.getMessage());
         }
-
+        bookingRepository.save(booking);
         return response;
     }
 
@@ -302,6 +307,26 @@ public class BookingService implements BookingServiceInterface {
         booking.setStatus(cancelledStatus);
         booking.setUpdatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingDTO> getBookingsByUserId(Integer userId, int offset, int limit) {
+        // Validate input
+        if (offset < 0) offset = 0;
+        if (limit <= 0) limit = 10;
+        if (limit > 100) limit = 100;
+
+        // Validate user exists
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+
+        // Gọi repository với userId, không cần search/status/tableId
+        Page<Booking> bookingPage = bookingRepository.findByFilters("", null, userId, null, pageable);
+
+        return bookingPage.map(this::mapToBookingDTO);
     }
 
     private BookingDTO mapToBookingDTO(Booking booking) {

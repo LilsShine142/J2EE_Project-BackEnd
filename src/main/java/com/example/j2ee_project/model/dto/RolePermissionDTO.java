@@ -10,9 +10,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class RolePermissionDTO {
-    private Integer rolePermissionId;
     private Integer roleId;
+    private String roleName;
     private Integer permissionId;
-    private LocalDateTime grantedAt;
-    private Integer grantedByUserId;
+    private String permissionName;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -17,6 +17,7 @@ public class MealDTO {
     private Integer categoryID;
     private String categoryName;
     private Integer statusId;
+    private Integer totalOrdered;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -38,11 +38,11 @@ public class UserController {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(value = "username", required = false) String username,
-            @RequestParam(value = "email", required = false) String email,
-            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "statusId", required = false) Integer statusId,
             @RequestParam(value = "roleId", required = false) Integer roleId) {
         try {
-            Map<String, Object> result = userService.getUsersPaginated(offset, limit, username, email, status, roleId);
+            Map<String, Object> result = userService.getUsersPaginated(offset, limit, username, search, statusId, roleId);
             return responseHandler.responseSuccess("Lấy danh sách người dùng thành công", result);
         } catch (Exception e) {
             e.printStackTrace();

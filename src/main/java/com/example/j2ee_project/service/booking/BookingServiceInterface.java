@@ -16,5 +16,7 @@ public interface BookingServiceInterface {
 
     ResponseData cancelBooking(Integer bookingId) throws Exception;
 
+    Page<BookingDTO> getBookingsByUserId(Integer userId, int offset, int limit);
+
     void deleteBooking(Integer bookingId);
 }

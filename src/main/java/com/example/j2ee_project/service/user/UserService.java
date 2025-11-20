@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
@@ -51,7 +50,7 @@ public class UserService implements UserDetailsService {
         this.statusRepository = statusRepository;
     }
 
-    public UserDTO createUser(UserRequest userRequest) {
+    public UserDTO createUser(UserRequest userRequest) throws DuplicateResourceException {
         if (userRepository.existsByUsername(userRequest.getUsername())) {
             throw new DuplicateResourceException("Tên đăng nhập đã tồn tại");
         }
@@ -68,7 +67,7 @@ public class UserService implements UserDetailsService {
                         "Không tìm thấy trạng thái với ID: " + userRequest.getStatusId()));
 
         User user = new User();
-        user.setUsername(userRequest.getUsername());
+        user.setUsername(userRequest.getEmail());
         user.setEmail(userRequest.getEmail());
         user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
         user.setFullName(userRequest.getFullName());
@@ -130,8 +129,6 @@ public class UserService implements UserDetailsService {
     public User processOAuthUser(OAuth2User oAuth2User, String provider) {
         String emailAttribute = oAuth2User.getAttribute("email");
         final String name = oAuth2User.getAttribute("name");
-        final String providerId = provider.equals("Facebook") ? oAuth2User.getAttribute("id") :
-                provider.equals("Google") ? oAuth2User.getAttribute("sub") : null;
 
         // Kiểm tra email null
         final String email;
@@ -156,7 +153,7 @@ public class UserService implements UserDetailsService {
         return userRepository.findByEmail(email)
                 .map(user -> {
                     // Kiểm tra trạng thái INACTIVE
-                    if (EStatus.INACTIVE.equals(user.getStatus().getStatusName())) {
+                    if (EStatus.INACTIVE.getName().equalsIgnoreCase(user.getStatus().getStatusName())) {
                         throw new DisabledException("Tài khoản đã bị vô hiệu hóa");
                     }
                     return user;
@@ -182,10 +179,10 @@ public class UserService implements UserDetailsService {
 
     // Hàm lấy danh sách người dùng kèm phân trang và lọc
     public Map<String, Object> getUsersPaginated(int offset, int limit,
-            String username, String email,
-            String status, Integer roleId) {
+            String username, String search,
+            Integer statusId, Integer roleId) {
         Pageable pageable = PageRequest.of(offset / limit, limit);
-        Page<User> page = userRepository.findUsersFiltered(username, email, status, roleId, pageable);
+        Page<User> page = userRepository.findUsersFiltered(username, search, statusId, roleId, pageable);
 
         List<UserDTO> users = page.getContent().stream()
                 .map(this::mapToUserDTO)
@@ -209,6 +206,13 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy người dùng với tên đăng nhập: " + username));
+        return mapToUserDTO(user);
+    }
+
+    public UserDTO getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy người dùng với email: " + email));
         return mapToUserDTO(user);
     }
 
@@ -280,12 +284,12 @@ public class UserService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng: " + username));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByUsername(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng: " + email));
 
         // Nếu user có status = "Inactive" thì disable
-        if (EStatus.INACTIVE.equals(user.getStatus())) {
+        if (EStatus.INACTIVE.getName().equalsIgnoreCase(user.getStatus().getStatusName())) {
             throw new DisabledException("Tài khoản đã bị vô hiệu hóa");
         }
 
@@ -300,17 +304,17 @@ public class UserService implements UserDetailsService {
                 }
             }
         } catch (Exception e) {
-            System.out.println("Warning: Could not load role for user " + username);
+            System.out.println("Warning: Could not load role for user " + email);
         }
 
         return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
+                .username(user.getEmail())
                 .password(user.getPassword())
                 .authorities(authorities)
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(EStatus.INACTIVE.equals(user.getStatus().getStatusName()))
+                .disabled(EStatus.INACTIVE.getName().equalsIgnoreCase(user.getStatus().getStatusName()))
                 .build();
     }
 }

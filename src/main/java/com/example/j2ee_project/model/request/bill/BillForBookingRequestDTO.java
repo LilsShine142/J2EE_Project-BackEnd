@@ -19,4 +19,7 @@ public class BillForBookingRequestDTO {
     private String voucherCode;
 
     private String orderInfo;
+
+//    @NotNull(message = "bookingId là bắt buộc để xuất hóa đơn")
+    private Integer bookingId;
 }
