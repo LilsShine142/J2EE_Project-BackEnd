@@ -16,8 +16,8 @@ public class UserRequest {
     @Size(max = 50, message = "Email không được vượt quá 50 ký tự")
     private String email;
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
-    @Size(min = 3, max = 20, message = "Tên đăng nhập phải từ 3 đến 20 ký tự")
+//    @NotBlank(message = "Tên đăng nhập không được để trống")
+//    @Size(min = 3, max = 20, message = "Tên đăng nhập phải từ 3 đến 20 ký tự")
     private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")

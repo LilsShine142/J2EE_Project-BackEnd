@@ -26,6 +26,9 @@ public class Meal {
     @Column(name = "image", length = 255)
     private String image;
 
+    @Column(name = "total_ordered", nullable = false)
+    private Integer totalOrdered = 0;
+
     @Column(name = "createdat")
     private LocalDateTime createdAt;
 

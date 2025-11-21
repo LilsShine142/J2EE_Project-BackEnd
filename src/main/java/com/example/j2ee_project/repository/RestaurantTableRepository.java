@@ -36,4 +36,14 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
             @Param("endTime") LocalDateTime endTime,
             @Param("excludedStatuses") List<String> excludedStatuses,
             Pageable pageable);
+
+    @Query("SELECT t FROM RestaurantTable t " +
+            "WHERE t.status.statusName = :availableStatus " +
+            "AND (:tableTypeId IS NULL OR t.tableType.id = :tableTypeId) " +
+            "AND (:capacity IS NULL OR t.tableType.capacity >= :capacity)")
+    List<RestaurantTable> findAvailableCandidates(
+            @Param("availableStatus") String availableStatus,
+            @Param("tableTypeId") Integer tableTypeId,
+            @Param("capacity") Integer capacity
+    );
 }

@@ -5,13 +5,13 @@ import com.example.j2ee_project.model.request.table.TableTypesRequest;
 import org.springframework.data.domain.Page;
 
 public interface TableTypeServiceInterface {
-    TableTypeDTO createTableType(TableTypesRequest tableTypeRequest);
+    TableTypeDTO createTableType(String token, TableTypesRequest tableTypeRequest);
 
-    Page<TableTypeDTO> getAllTableTypes(int offset, int limit, String search);
+    Page<TableTypeDTO> getAllTableTypes(String token, int offset, int limit, String search);
 
-    TableTypeDTO getTableTypeById(Integer tableTypeId);
+    TableTypeDTO getTableTypeById(String token, Integer tableTypeId);
 
-    TableTypeDTO updateTableType(Integer tableTypeId, TableTypesRequest tableTypeRequest);
+    TableTypeDTO updateTableType(String token, Integer tableTypeId, TableTypesRequest tableTypeRequest);
 
-    void deleteTableType(Integer tableTypeId);
+    void deleteTableType(String token, Integer tableTypeId);
 }

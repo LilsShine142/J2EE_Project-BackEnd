@@ -1,5 +1,6 @@
 package com.example.j2ee_project.controller;
 
+import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.UserDTO;
 import com.example.j2ee_project.model.request.user.UserRequest;
@@ -7,70 +8,137 @@ import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.user.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "User Management", description = "APIs for managing user accounts")
+@RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
     private final ResponseHandler responseHandler;
 
-    @Autowired
-    public UserController(UserService userService, ResponseHandler responseHandler) {
-        this.userService = userService;
-        this.responseHandler = responseHandler;
-    }
-
+    // ==================== REGISTER - KHÔNG CẦN TOKEN ====================
     @PostMapping("/register")
     public ResponseEntity<?> createUser(@Valid @RequestBody UserRequest userRequest) {
         UserDTO response = userService.createUser(userRequest);
         return responseHandler.responseCreated("Tạo người dùng thành công", response);
     }
 
+    // ==================== CÁC ENDPOINT CẦN TOKEN + QUYỀN ====================
+    // Helper method để extract token - giống hệt cách bạn đang làm ở HTTT_BE
+    private String extractToken(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            throw new ForbiddenException("Thiếu token xác thực");
+        }
+        return authorizationHeader.startsWith("Bearer ")
+                ? authorizationHeader.substring(7)
+                : authorizationHeader;
+    }
+
     @GetMapping("/get-all")
     public ResponseEntity<?> getAllUsers(
+            @RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(value = "username", required = false) String username,
-            @RequestParam(value = "email", required = false) String email,
-            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "statusId", required = false) Integer statusId,
             @RequestParam(value = "roleId", required = false) Integer roleId) {
+
         try {
-            Map<String, Object> result = userService.getUsersPaginated(offset, limit, username, email, status, roleId);
+            String authToken = extractToken(token); // chỉ extract, không check quyền
+            Map<String, Object> result = userService.getUsersPaginated(authToken, offset, limit, username, search, statusId, roleId);
             return responseHandler.responseSuccess("Lấy danh sách người dùng thành công", result);
+
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (Exception e) {
             e.printStackTrace();
-            return responseHandler.responseError("Đã xảy ra lỗi khi lấy danh sách người dùng",
-                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+            return responseHandler.handleServerError("Đã xảy ra lỗi khi lấy danh sách người dùng");
         }
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable Integer userId) {
+    public ResponseEntity<?> getUserById(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Integer userId) {
+
         try {
-            UserDTO response = userService.getUserById(userId);
+            String authToken = extractToken(token);
+            UserDTO response = userService.getUserById(authToken, userId);
             return responseHandler.responseSuccess("Lấy thông tin người dùng thành công", response);
-        } catch (ResourceNotFoundException ex) {
-            return responseHandler.handleNotFound(ex.getMessage());
+
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Đã xảy ra lỗi khi lấy thông tin người dùng");
         }
     }
 
     @PutMapping("/{userId}")
-    public ResponseEntity<?> updateUser(@PathVariable Integer userId, @Valid @RequestBody UserDTO userDTO) {
-        userDTO.setUserId(userId); // đảm bảo id khớp path param
-        UserDTO response = userService.updateUser(userId, userDTO);
-        return responseHandler.responseSuccess("Cập nhật người dùng thành công", response);
+    public ResponseEntity<?> updateUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Integer userId,
+            @Valid @RequestBody UserDTO userDTO) {
+
+        try {
+            String authToken = extractToken(token);
+            userDTO.setUserId(userId);
+            UserDTO response = userService.updateUser(authToken, userId, userDTO);
+            return responseHandler.responseSuccess("Cập nhật người dùng thành công", response);
+
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Đã xảy ra lỗi khi cập nhật người dùng");
+        }
     }
 
     @DeleteMapping("/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable Integer userId) {
-        userService.deleteUser(userId);
-        return responseHandler.responseSuccess("Xóa người dùng thành công", null);
+    public ResponseEntity<?> deleteUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Integer userId) {
+
+        try {
+            String authToken = extractToken(token);
+            userService.deleteUser(authToken, userId);
+            return responseHandler.responseSuccess("Xóa người dùng thành công", null);
+
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Đã xảy ra lỗi khi xóa người dùng");
+        }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyProfile(@RequestHeader("Authorization") String token) {
+        try {
+            String authToken = extractToken(token); // hàm bạn đã có trong controller
+
+            UserDTO userDTO = userService.getMyProfile(authToken);
+
+            return responseHandler.responseSuccess("Lấy thông tin cá nhân thành công", userDTO);
+
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Lỗi khi lấy thông tin cá nhân");
+        }
     }
 }

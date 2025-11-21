@@ -6,8 +6,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
+
+        Optional<Order> findByBookingID(Integer bookingID);
+
         @Query("SELECT o FROM Order o WHERE " +
                 "(:search IS NULL OR LOWER(o.user.fullName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
                 "(:statusId IS NULL OR o.status.statusID = :statusId) AND " +

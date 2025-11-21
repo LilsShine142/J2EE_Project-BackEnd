@@ -1,5 +1,6 @@
 package com.example.j2ee_project.controller;
 
+import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.BookingDTO;
 import com.example.j2ee_project.model.request.booking.BookingRequestDTO;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -51,6 +53,16 @@ public class BookingController {
             @RequestParam(required = false) Integer tableId) {
         Page<BookingDTO> bookingPage = bookingService.getAllBookings(offset, limit, search, statusId, userId, tableId);
         return responseHandler.responseSuccess("Lấy danh sách booking thành công", bookingPage);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getBookingsByUserId(
+            @PathVariable Integer userId,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        Page<BookingDTO> bookings = bookingService.getBookingsByUserId(userId, offset, limit);
+        return responseHandler.responseSuccess("Lấy danh sách đặt bàn thành công", bookings);
     }
 
     @GetMapping("/{bookingId}")

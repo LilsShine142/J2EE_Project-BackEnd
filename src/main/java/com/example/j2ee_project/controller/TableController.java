@@ -40,15 +40,34 @@ public class TableController {
         return responseHandler.responseSuccess("Lấy danh sách bàn thành công", tablePage);
     }
 
+//    @GetMapping("/available")
+//    public ResponseEntity<?> getAvailableTables(
+//            @RequestParam(defaultValue = "0") int offset,
+//            @RequestParam(defaultValue = "10") int limit,
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bookingDate,
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+//            @RequestParam(required = false) Integer capacity) {
+//        Page<RestaurantTableDTO> tablePage = tableService.getAvailableTables(offset, limit, bookingDate, startTime, endTime, capacity);
+//        return responseHandler.responseSuccess("Lấy danh sách bàn khả dụng thành công", tablePage);
+//    }
+
     @GetMapping("/available")
     public ResponseEntity<?> getAvailableTables(
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bookingDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(required = false) Integer capacity) {
-        Page<RestaurantTableDTO> tablePage = tableService.getAvailableTables(offset, limit, bookingDate, startTime, endTime, capacity);
+            @RequestParam(required = false) Integer capacity,
+            @RequestParam(required = false) Integer tableTypeId
+    ) {
+        // === TỰ ĐỘNG TÍNH endTime = startTime + 5 giờ ===
+        LocalDateTime endTime = startTime.plusHours(5);
+
+        // === GỌI SERVICE ===
+        Page<RestaurantTableDTO> tablePage = tableService.getAvailableTables(
+                offset, limit, null, startTime, endTime, capacity, tableTypeId
+        );
+
         return responseHandler.responseSuccess("Lấy danh sách bàn khả dụng thành công", tablePage);
     }
 

@@ -1,6 +1,9 @@
 package com.example.j2ee_project.service.email;
 
 import com.example.j2ee_project.entity.User;
+import com.example.j2ee_project.model.dto.EmailHistoryDTO;
+import org.springframework.data.domain.Page;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -45,4 +48,9 @@ public interface EmailServiceInterface {
      * Random password generator
      */
     String generateRandomPassword();
+
+    /**
+     * Lấy lịch sử gửi email với bộ lọc
+     */
+    Page<EmailHistoryDTO> getEmailHistory(String token, Integer userId, LocalDateTime startDate, LocalDateTime endDate, String type, int offset, int limit);
 }

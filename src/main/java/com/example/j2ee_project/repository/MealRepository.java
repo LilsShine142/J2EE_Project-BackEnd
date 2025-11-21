@@ -25,4 +25,7 @@ public interface MealRepository extends JpaRepository<Meal, Integer> {
                 @Param("minPrice") BigDecimal minPrice,
                 @Param("maxPrice") BigDecimal maxPrice,
                 Pageable pageable);
+
+        @Query("SELECT m FROM Meal m WHERE m.status.statusID = 1 ORDER BY m.totalOrdered DESC")
+        Page<Meal> findTopPopular(Pageable pageable);
 }

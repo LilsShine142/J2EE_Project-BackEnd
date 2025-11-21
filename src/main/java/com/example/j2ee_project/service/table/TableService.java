@@ -7,12 +7,14 @@ import com.example.j2ee_project.exception.DuplicateResourceException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.RestaurantTableDTO;
 import com.example.j2ee_project.model.request.table.TableRequestDTO;
+import com.example.j2ee_project.repository.BookingRepository;
 import com.example.j2ee_project.repository.RestaurantTableRepository;
 import com.example.j2ee_project.repository.TableTypeRepository;
 import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.utils._enum.EStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +32,7 @@ public class TableService implements TableServiceInterface {
     private final RestaurantTableRepository restaurantTableRepository;
     private final TableTypeRepository tableTypeRepository;
     private final StatusRepository statusRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional
@@ -72,21 +76,69 @@ public class TableService implements TableServiceInterface {
         return tablePage.map(this::mapToTableDTO);
     }
 
+//    @Override
+//    @Transactional(readOnly = true)
+//    public Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity) {
+//        if (offset < 0) offset = 0;
+//        if (limit <= 0) limit = 10;
+//        if (limit > 100) limit = 100;
+//
+//        String availableStatus = EStatus.AVAILABLE.getName();
+//        List<String> excludedStatuses = Arrays.asList(EStatus.CANCELLED.getName(), EStatus.COMPLETED.getName());
+//
+//        Pageable pageable = PageRequest.of(offset / limit, limit);
+//        Page<RestaurantTable> page = restaurantTableRepository.findAvailableTables(
+//                availableStatus, capacity, startTime, endTime, excludedStatuses, pageable);
+//
+//        return page.map(this::mapToTableDTO);
+//    }
     @Override
     @Transactional(readOnly = true)
-    public Page<RestaurantTableDTO> getAvailableTables(int offset, int limit, LocalDateTime bookingDate, LocalDateTime startTime, LocalDateTime endTime, Integer capacity) {
+    public Page<RestaurantTableDTO> getAvailableTables(
+            int offset, int limit,
+            LocalDateTime bookingDate,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            Integer capacity,
+            Integer tableTypeId
+    ) {
         if (offset < 0) offset = 0;
-        if (limit <= 0) limit = 10;
-        if (limit > 100) limit = 100;
+        if (limit <= 0 || limit > 100) limit = 10;
 
-        String availableStatus = EStatus.AVAILABLE.getName();
-        List<String> excludedStatuses = Arrays.asList(EStatus.CANCELLED.getName(), EStatus.COMPLETED.getName());
+        // === BƯỚC 1: TỐI ƯU – CHỈ LẤY BÀN CÓ STATUS = AVAILABLE ===
+        List<RestaurantTable> candidates = restaurantTableRepository.findAvailableCandidates(
+                EStatus.AVAILABLE.getName(),
+                tableTypeId,
+                capacity
+        );
+
+        // === BƯỚC 2: LOẠI BỎ BÀN TRÙNG LỊCH (5 GIỜ) ===
+        LocalDateTime bookingEndTime = startTime.plusHours(5); // ← 5 giờ mặc định
+        List<String> excludedStatuses = Arrays.asList(
+                EStatus.CANCELLED.getName(),
+                EStatus.COMPLETED.getName()
+        );
+
+        List<RestaurantTable> availableTables = candidates.stream()
+                .filter(table -> !bookingRepository.existsOverlappingBooking(
+                        table.getTableID(),
+                        startTime,
+                        bookingEndTime,
+                        excludedStatuses
+                ))
+                .collect(Collectors.toList());
+
+        // === BƯỚC 3: PHÂN TRANG THỦ CÔNG ===
+        int from = Math.min(offset, availableTables.size());
+        int to = Math.min(offset + limit, availableTables.size());
+        List<RestaurantTable> paged = availableTables.subList(from, to);
+
+        List<RestaurantTableDTO> dtos = paged.stream()
+                .map(this::mapToTableDTO)
+                .collect(Collectors.toList());
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
-        Page<RestaurantTable> page = restaurantTableRepository.findAvailableTables(
-                availableStatus, capacity, startTime, endTime, excludedStatuses, pageable);
-
-        return page.map(this::mapToTableDTO);
+        return new PageImpl<>(dtos, pageable, availableTables.size());
     }
 
     @Override

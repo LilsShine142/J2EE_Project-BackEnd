@@ -3,7 +3,6 @@ package com.example.j2ee_project.service.role;
 import com.example.j2ee_project.entity.Permission;
 import com.example.j2ee_project.entity.Role;
 import com.example.j2ee_project.entity.RolePermission;
-import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.entity.keys.KeyRolePermissionId;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.RolePermissionDTO;
@@ -43,12 +42,10 @@ public class RolePermissionService implements RolePermissionServiceInterface {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò với ID: " + request.getRoleId()));
         Permission permission = permissionRepository.findById(request.getPermissionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quyền với ID: " + request.getPermissionId()));
-        User grantedBy = userRepository.findById(request.getGrantedByUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + request.getGrantedByUserId()));
 
-        // Kiểm tra quyền của grantedBy (giả sử user cần có quyền "MANAGE_PERMISSIONS")
-        // Đây là logic nghiệp vụ, cần tích hợp Spring Security thực tế
-        // Ví dụ: checkPermission(grantedBy, "MANAGE_PERMISSIONS");
+        // Validate user exists
+        userRepository.findById(request.getGrantedByUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + request.getGrantedByUserId()));
 
         RolePermission rolePermission = new RolePermission(role, permission);
         RolePermission saved = rolePermissionRepository.save(rolePermission);
@@ -64,7 +61,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
                 "Permission " + permission.getPermissionName() + " granted to role " + role.getRoleName(),
                 "No"));
 
-        return mapToRolePermissionDTO(saved, request.getGrantedByUserId());
+        return mapToRolePermissionDTO(saved);
     }
 
     @Override
@@ -76,9 +73,8 @@ public class RolePermissionService implements RolePermissionServiceInterface {
         if (search == null) search = "";
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
-        Page<RolePermission> page = rolePermissionRepository.findByRoleRoleNameContainingIgnoreCaseOrPermissionPermissionNameContainingIgnoreCase(
-                search, search, pageable);
-        return page.map(rp -> mapToRolePermissionDTO(rp, null));
+        Page<RolePermission> page = rolePermissionRepository.findByFilters(search, pageable);
+        return page.map(this::mapToRolePermissionDTO);
     }
 
     @Override
@@ -87,7 +83,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
         KeyRolePermissionId id = new KeyRolePermissionId(roleId, permissionId);
         RolePermission rolePermission = rolePermissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy liên kết vai trò-quyền với roleID: " + roleId + " và permissionID: " + permissionId));
-        return mapToRolePermissionDTO(rolePermission, null);
+        return mapToRolePermissionDTO(rolePermission);
     }
 
     @Override
@@ -101,11 +97,10 @@ public class RolePermissionService implements RolePermissionServiceInterface {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò với ID: " + request.getRoleId()));
         Permission newPermission = permissionRepository.findById(request.getPermissionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quyền với ID: " + request.getPermissionId()));
-        User grantedBy = userRepository.findById(request.getGrantedByUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + request.getGrantedByUserId()));
 
-        // Kiểm tra quyền của grantedBy
-        // checkPermission(grantedBy, "MANAGE_PERMISSIONS");
+        // Validate user exists
+        userRepository.findById(request.getGrantedByUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + request.getGrantedByUserId()));
 
         rolePermission.setRole(newRole);
         rolePermission.setPermission(newPermission);
@@ -123,7 +118,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
                 "Permission " + newPermission.getPermissionName() + " updated for role " + newRole.getRoleName(),
                 "No"));
 
-        return mapToRolePermissionDTO(updated, request.getGrantedByUserId());
+        return mapToRolePermissionDTO(updated);
     }
 
     @Override
@@ -146,14 +141,14 @@ public class RolePermissionService implements RolePermissionServiceInterface {
                 "No"));
     }
 
-    private RolePermissionDTO mapToRolePermissionDTO(RolePermission rolePermission, Integer grantedByUserId) {
-        RolePermissionDTO dto = RolePermissionDTO.builder()
-                .rolePermissionId(rolePermission.getId().hashCode())
+    private RolePermissionDTO mapToRolePermissionDTO(RolePermission rolePermission) {
+        return RolePermissionDTO.builder()
                 .roleId(rolePermission.getRole().getRoleID())
+                .roleName(rolePermission.getRole().getRoleName())
                 .permissionId(rolePermission.getPermission().getPermissionID())
-                .grantedAt(LocalDateTime.now())
-                .grantedByUserId(grantedByUserId)
+                .permissionName(rolePermission.getPermission().getPermissionName())
+                .createdAt(rolePermission.getCreatedAt())
+                .updatedAt(rolePermission.getUpdatedAt())
                 .build();
-        return dto;
     }
 }

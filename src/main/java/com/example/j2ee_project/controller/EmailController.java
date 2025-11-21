@@ -2,6 +2,7 @@ package com.example.j2ee_project.controller;
 
 import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
+import com.example.j2ee_project.model.dto.EmailHistoryDTO;
 import com.example.j2ee_project.model.request.email.EmailRequest;
 import com.example.j2ee_project.model.request.email.EmailVerificationRequest;
 import com.example.j2ee_project.model.request.email.PasswordResetRequest;
@@ -11,11 +12,13 @@ import com.example.j2ee_project.service.email.EmailServiceInterface;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -150,7 +153,7 @@ public class EmailController {
             emailService.sendEmailToUserById(
                     user.getUserID(),
                     "Chào mừng bạn!",
-                    "Cảm ơn bạn đã đăng ký tài khoản. Chúng tôi rất vui khi bạn tham gia cộng đồng của chúng tôi!",
+                    "Chào mừng bạn đến với hệ thống của chúng tôi! Tài khoản của bạn đã được tạo thành công.",
                     variables
             );
             return responseHandler.responseSuccess("Email chào mừng đã được gửi", null);
@@ -158,6 +161,30 @@ public class EmailController {
             return responseHandler.handleBadRequest(e.getMessage());
         } catch (Exception e) {
             return responseHandler.handleServerError("Lỗi khi gửi email chào mừng: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lấy lịch sử gửi email với bộ lọc
+     */
+    @GetMapping("/history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ResponseData> getEmailHistory(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) Integer userId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String type) {
+        try {
+            LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate) : null;
+            LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate) : null;
+
+            Page<EmailHistoryDTO> historyPage = emailService.getEmailHistory(token, userId, start, end, type, offset, limit);
+            return responseHandler.responseSuccess("Lấy lịch sử email thành công", historyPage);
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Lỗi khi lấy lịch sử email: " + e.getMessage());
         }
     }
 }

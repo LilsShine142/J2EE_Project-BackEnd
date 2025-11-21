@@ -55,12 +55,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("success", false);
-        body.put("status", HttpStatus.CONFLICT.value()); // 409 Conflict phù hợp hơn cho resource trùng lặp
+        body.put("status", HttpStatus.CONFLICT.value());
         body.put("error", "Resource Conflict");
         body.put("message", ex.getMessage());
         body.put("path", getRequestPath(request));
 
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Object> handleForbiddenException(
+            ForbiddenException ex,
+            WebRequest request) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("success", false);
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Forbidden");
+        body.put("message", ex.getMessage());
+        body.put("path", getRequestPath(request));
+
+        return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)

@@ -26,35 +26,44 @@ public class TableTypeController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> createTableType(@Valid @RequestBody TableTypesRequest request) {
-        TableTypeDTO response = tableTypeService.createTableType(request);
+    public ResponseEntity<?> createTableType(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @Valid @RequestBody TableTypesRequest request) {
+        TableTypeDTO response = tableTypeService.createTableType(token, request);
         return responseHandler.responseCreated("Tạo loại bàn thành công", response);
     }
 
     @GetMapping("/getall")
     public ResponseEntity<?> getAllTableTypes(
+            @RequestHeader(value = "Authorization", required = false) String token,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String search) {
-        Page<TableTypeDTO> tableTypePage = tableTypeService.getAllTableTypes(offset, limit, search);
+        Page<TableTypeDTO> tableTypePage = tableTypeService.getAllTableTypes(token, offset, limit, search);
         return responseHandler.responseSuccess("Lấy danh sách loại bàn thành công", tableTypePage);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTableTypeById(@PathVariable Integer id) {
-        TableTypeDTO response = tableTypeService.getTableTypeById(id);
+    public ResponseEntity<?> getTableTypeById(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @PathVariable Integer id) {
+        TableTypeDTO response = tableTypeService.getTableTypeById(token, id);
         return responseHandler.responseSuccess("Lấy thông tin loại bàn thành công", response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateTableType(@PathVariable Integer id, @Valid @RequestBody TableTypesRequest request) {
-        TableTypeDTO response = tableTypeService.updateTableType(id, request);
+    public ResponseEntity<?> updateTableType(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @PathVariable Integer id, @Valid @RequestBody TableTypesRequest request) {
+        TableTypeDTO response = tableTypeService.updateTableType(token, id, request);
         return responseHandler.responseSuccess("Cập nhật loại bàn thành công", response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTableType(@PathVariable Integer id) {
-        tableTypeService.deleteTableType(id);
+    public ResponseEntity<?> deleteTableType(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @PathVariable Integer id) {
+        tableTypeService.deleteTableType(token, id);
         return responseHandler.responseSuccess("Xóa loại bàn thành công", null);
     }
 }

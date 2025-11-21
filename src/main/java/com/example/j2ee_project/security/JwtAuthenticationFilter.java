@@ -37,9 +37,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        try {
-            String jwt = getJwtFromRequest(request);
+        String path = request.getServletPath();
 
+        // For optional auth endpoints, if no token, proceed without authentication
+        String jwt = getJwtFromRequest(request);
+        if (jwt == null && isOptionalAuthEndpoint(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        try {
             if (jwt != null && jwtTokenProvider.verifyToken(jwt)) {
                 String username = jwtTokenProvider.getUsernameFromToken(jwt);
 
@@ -79,6 +86,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return path.startsWith("/api/auth/")
                 || path.startsWith("/api/public/")
                 || path.equals("/api/users/register");
+    }
+
+    private boolean isOptionalAuthEndpoint(String path) {
+        // Định nghĩa các endpoint không bắt buộc phải có token ở đây
+        return path.equals("/api/categories/getall") ||
+               path.equals("/api/meals/popular") ||
+               path.startsWith("/api/meals/category/") ||
+               path.equals("/api/tabletypes/getall") ||
+               path.equals("/api/meals/getall");
     }
 
 }
