@@ -1,5 +1,7 @@
 package com.example.j2ee_project.entity;
 
+import com.example.j2ee_project.utils._enum.ENotificationActionType;
+import com.example.j2ee_project.utils._enum.ENotificationReadStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -9,6 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "notifications")
 public class Notification {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "notificationid")
     private Integer notificationID;
 
@@ -26,5 +29,11 @@ public class Notification {
     private LocalDateTime sentDate = LocalDateTime.now();
 
     @Column(name = "isread", length = 3)
-    private String isRead = "No";
+    private String isRead = ENotificationReadStatus.NO.getCode();
+
+    @Column(name = "actiontype", length = 20)
+    private String actionType = ENotificationActionType.NONE.getCode();
+
+    @Column(name = "actionid")
+    private Integer actionId;
 }

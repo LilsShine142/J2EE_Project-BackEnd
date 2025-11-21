@@ -53,4 +53,9 @@ public interface EmailServiceInterface {
      * Lấy lịch sử gửi email với bộ lọc
      */
     Page<EmailHistoryDTO> getEmailHistory(String token, Integer userId, LocalDateTime startDate, LocalDateTime endDate, String type, int offset, int limit);
+
+    /**
+     * Lấy chi tiết email theo ID
+     */
+    EmailHistoryDTO getEmailById(String token, Integer id);
 }

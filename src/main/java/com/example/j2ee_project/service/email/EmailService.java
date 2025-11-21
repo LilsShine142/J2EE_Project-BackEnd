@@ -1,6 +1,7 @@
 package com.example.j2ee_project.service.email;
 
 import com.example.j2ee_project.entity.User;
+import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.request.log.LogRequest;
 import com.example.j2ee_project.repository.UserRepository;
@@ -22,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import com.example.j2ee_project.entity.Log;
 import com.example.j2ee_project.model.dto.EmailHistoryDTO;
 import com.example.j2ee_project.repository.LogRepository;
+import com.example.j2ee_project.utils._enum.EPermission;
+import com.example.j2ee_project.utils.role_permission.RolePermissionUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -35,6 +38,7 @@ public class EmailService implements EmailServiceInterface {
     private final UserRepository userRepository;
     private final LogServiceInterface logService;
     private final LogRepository logRepository;
+    private final RolePermissionUtils rolePermissionUtils;
 
     // Role IDs constants
     private static final Integer CUSTOMER_ROLE_ID = 1;
@@ -289,10 +293,11 @@ public class EmailService implements EmailServiceInterface {
     @Override
     public Page<EmailHistoryDTO> getEmailHistory(String token, Integer userId, LocalDateTime startDate, LocalDateTime endDate, String type, int offset, int limit) {
         // Kiểm tra quyền nếu token != null
-        if (token != null) {
-            // Giả sử cần quyền VIEW_EMAIL_HISTORY hoặc tương tự, nhưng tạm thời bỏ qua hoặc thêm logic
-            // rolePermissionUtils.hasPermission(token, EPermission.VIEW_EMAIL_HISTORY.getCode())
-        }
+//        if (token != null && !token.isBlank()) {
+//            if (!rolePermissionUtils.hasPermission(token, EPermission.VIEW_EMAIL_HISTORY.getCode())) {
+//                throw new ForbiddenException("Bạn không có quyền xem lịch sử email");
+//            }
+//        }
 
         Pageable pageable = PageRequest.of(offset / limit, limit);
         Page<Log> logPage = logRepository.findEmailHistory(userId, startDate, endDate, type, pageable);
@@ -333,5 +338,21 @@ public class EmailService implements EmailServiceInterface {
                 .sentAt(log.getChangeTime())
                 .status(log.getAction())
                 .build();
+    }
+
+    @Override
+    public EmailHistoryDTO getEmailById(String token, Integer id) {
+        if (token != null && !token.isBlank()) {
+//            if (!rolePermissionUtils.hasPermission(token, EPermission.VIEW_EMAIL_HISTORY.getCode())) {
+//                throw new ForbiddenException("Bạn không có quyền xem chi tiết email");
+//            }
+        }
+
+        Log log = logRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch sử email với ID: " + id));
+        if (!"emails".equalsIgnoreCase(log.getTableName())) {
+            throw new ResourceNotFoundException("Không tìm thấy lịch sử email với ID: " + id);
+        }
+
+        return mapLogToEmailHistoryDTO(log);
     }
 }

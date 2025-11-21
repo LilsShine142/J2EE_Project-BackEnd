@@ -24,6 +24,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.example.j2ee_project.service.log.LogServiceInterface;
+import com.example.j2ee_project.model.request.log.LogRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class MealService implements MealServiceInterface {
     private final CategoryRepository categoryRepository;
     private final StatusRepository statusRepository;
     private final RolePermissionUtils rolePermissionUtils;
+    private final LogServiceInterface logService;
 
     @Override
     @Transactional
@@ -65,6 +68,8 @@ public class MealService implements MealServiceInterface {
         meal.setUpdatedAt(LocalDateTime.now());
 
         Meal savedMeal = mealRepository.save(meal);
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+        logService.createLog(new LogRequest("meals", savedMeal.getMealID(), "CREATE", "Created meal with ID: " + savedMeal.getMealID(), currentUserId));
         return mapToMealDTO(savedMeal);
     }
 
@@ -152,6 +157,8 @@ public class MealService implements MealServiceInterface {
 
         meal.setUpdatedAt(LocalDateTime.now());
         Meal updatedMeal = mealRepository.save(meal);
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+        logService.createLog(new LogRequest("meals", mealID, "UPDATE", "Updated meal with ID: " + mealID, currentUserId));
         return mapToMealDTO(updatedMeal);
     }
 
@@ -168,6 +175,8 @@ public class MealService implements MealServiceInterface {
             throw new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + mealID);
         }
         mealRepository.deleteById(mealID);
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+        logService.createLog(new LogRequest("meals", mealID, "DELETE", "Deleted meal with ID: " + mealID, currentUserId));
     }
 
     @Override

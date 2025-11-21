@@ -4,9 +4,13 @@ import com.example.j2ee_project.entity.Notification;
 import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.NotificationDTO;
+import com.example.j2ee_project.model.request.log.LogRequest;
 import com.example.j2ee_project.model.request.notification.NotificationRequest;
 import com.example.j2ee_project.repository.NotificationRepository;
 import com.example.j2ee_project.repository.UserRepository;
+import com.example.j2ee_project.service.log.LogServiceInterface;
+import com.example.j2ee_project.utils._enum.ENotificationActionType;
+import com.example.j2ee_project.utils._enum.ENotificationReadStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +26,7 @@ public class NotificationService implements NotificationServiceInterface {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final LogServiceInterface logService;
 
     @Override
     @Transactional
@@ -34,9 +39,12 @@ public class NotificationService implements NotificationServiceInterface {
         notification.setTitle(request.getTitle());
         notification.setContent(request.getContent());
         notification.setSentDate(LocalDateTime.now());
-        notification.setIsRead(request.getIsRead() != null ? request.getIsRead() : "No");
+        notification.setIsRead(request.getIsRead() != null ? request.getIsRead() : ENotificationReadStatus.NO.getCode());
+        notification.setActionType(request.getActionType() != null ? request.getActionType() : ENotificationActionType.NONE.getCode());
+        notification.setActionId(request.getActionId());
 
         Notification saved = notificationRepository.save(notification);
+        logService.createLog(new LogRequest("notifications", saved.getNotificationID(), "CREATE", "Created notification for user " + user.getUserID(), null));
         return mapToNotificationDTO(saved);
     }
 
@@ -77,6 +85,7 @@ public class NotificationService implements NotificationServiceInterface {
         notification.setIsRead(request.getIsRead() != null ? request.getIsRead() : "No");
 
         Notification updated = notificationRepository.save(notification);
+        logService.createLog(new LogRequest("notifications", notificationId, "UPDATE", "Updated notification for user " + user.getUserID(), null));
         return mapToNotificationDTO(updated);
     }
 
@@ -86,6 +95,17 @@ public class NotificationService implements NotificationServiceInterface {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông báo với ID: " + notificationId));
         notificationRepository.delete(notification);
+        logService.createLog(new LogRequest("notifications", notificationId, "DELETE", "Deleted notification for user " + notification.getUser().getUserID(), null));
+    }
+
+    @Override
+    @Transactional
+    public NotificationDTO markAsRead(Integer notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông báo với ID: " + notificationId));
+        notification.setIsRead(ENotificationReadStatus.YES.getCode());
+        Notification updated = notificationRepository.save(notification);
+        return mapToNotificationDTO(updated);
     }
 
     private NotificationDTO mapToNotificationDTO(Notification notification) {

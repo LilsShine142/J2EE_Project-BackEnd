@@ -99,12 +99,6 @@ public enum EPermission {
     UPDATE_NOTIFICATION("UPDATE_NOTIFICATION", "Cập nhật thông báo"),
     DELETE_NOTIFICATION("DELETE_NOTIFICATION", "Xóa thông báo"),
 
-    // Log permissions
-    VIEW_LOG("VIEW_LOG", "Xem danh sách log"),
-
-    // Email permissions
-    SEND_EMAIL("SEND_EMAIL", "Gửi email"),
-
     // Profile
     VIEW_PROFILE("VIEW_PROFILE", "Xem thông tin profile cá nhân"),
     UPDATE_PROFILE("UPDATE_PROFILE", "Cập nhật thông tin profile cá nhân"),
@@ -118,4 +112,3 @@ public enum EPermission {
         this.description = description;
     }
 }
-

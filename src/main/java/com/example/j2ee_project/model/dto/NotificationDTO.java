@@ -12,4 +12,6 @@ public class NotificationDTO {
     private String content;
     private LocalDateTime sentDate;
     private String isRead;
+    private String actionType;
+    private Integer actionId;
 }

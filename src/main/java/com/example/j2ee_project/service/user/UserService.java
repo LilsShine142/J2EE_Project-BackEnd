@@ -23,6 +23,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.example.j2ee_project.utils.role_permission.RolePermissionUtils;
+import com.example.j2ee_project.service.log.LogServiceInterface;
+import com.example.j2ee_project.model.request.log.LogRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -45,15 +47,17 @@ public class UserService implements UserDetailsService {
     private final RoleService roleService;
     private final StatusRepository statusRepository;
     private final RolePermissionUtils rolePermissionUtils;
+    private final LogServiceInterface logService;
 
     @Autowired
     public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, RoleService roleService,
-            StatusRepository statusRepository, RolePermissionUtils rolePermissionUtils) {
+            StatusRepository statusRepository, RolePermissionUtils rolePermissionUtils, LogServiceInterface logService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.roleService = roleService;
         this.statusRepository = statusRepository;
         this.rolePermissionUtils =  rolePermissionUtils;
+        this.logService = logService;
     }
 
     public UserDTO createUser(UserRequest userRequest) throws DuplicateResourceException {
@@ -124,6 +128,7 @@ public class UserService implements UserDetailsService {
         }
 
         user = userRepository.save(user);
+        logService.createLog(new LogRequest("users", user.getUserID(), "CREATE", "Created user with ID: " + user.getUserID(), null));
         return mapToUserDTO(user);
     }
 
@@ -321,6 +326,7 @@ public class UserService implements UserDetailsService {
         user.setUpdatedAt(LocalDateTime.now());
 
         user = userRepository.save(user);
+        logService.createLog(new LogRequest("users", userId, "UPDATE", "Updated user with ID: " + userId, currentUserId));
         return mapToUserDTO(user);
     }
 
@@ -333,6 +339,8 @@ public class UserService implements UserDetailsService {
             throw new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId);
         }
         userRepository.deleteById(userId);
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+        logService.createLog(new LogRequest("users", userId, "DELETE", "Deleted user with ID: " + userId, currentUserId));
     }
 
     public UserDTO mapToUserDTO(User user) {

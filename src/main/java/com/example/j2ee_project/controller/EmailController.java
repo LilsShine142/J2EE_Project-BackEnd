@@ -1,6 +1,7 @@
 package com.example.j2ee_project.controller;
 
 import com.example.j2ee_project.entity.User;
+import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.EmailHistoryDTO;
 import com.example.j2ee_project.model.request.email.EmailRequest;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
@@ -168,9 +170,8 @@ public class EmailController {
      * Lấy lịch sử gửi email với bộ lọc
      */
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> getEmailHistory(
-            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestHeader(value = "Authorization", required = false) String tokenHeader,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) Integer userId,
@@ -178,6 +179,11 @@ public class EmailController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String type) {
         try {
+            String token = null;
+            if (tokenHeader != null && !tokenHeader.isBlank()) {
+                token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
+            }
+
             LocalDateTime start = startDate != null ? LocalDateTime.parse(startDate) : null;
             LocalDateTime end = endDate != null ? LocalDateTime.parse(endDate) : null;
 
@@ -187,4 +193,29 @@ public class EmailController {
             return responseHandler.handleServerError("Lỗi khi lấy lịch sử email: " + e.getMessage());
         }
     }
+
+    /**
+     * Lấy chi tiết email theo ID
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ResponseData> getEmailById(
+            @RequestHeader(value = "Authorization", required = false) String tokenHeader,
+            @PathVariable Integer id) {
+        try {
+            String token = null;
+            if (tokenHeader != null && !tokenHeader.isBlank()) {
+                token = tokenHeader.startsWith("Bearer ") ? tokenHeader.substring(7) : tokenHeader;
+            }
+
+            EmailHistoryDTO dto = emailService.getEmailById(token, id);
+            return responseHandler.responseSuccess("Lấy chi tiết email thành công", dto);
+        } catch (ForbiddenException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Lỗi khi lấy chi tiết email: " + e.getMessage());
+        }
+    }
 }
+

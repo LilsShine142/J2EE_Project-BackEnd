@@ -14,4 +14,6 @@ public interface NotificationServiceInterface {
     NotificationDTO updateNotification(Integer notificationId, NotificationRequest request);
 
     void deleteNotification(Integer notificationId);
+
+    NotificationDTO markAsRead(Integer notificationId);
 }

@@ -20,6 +20,11 @@ public class NotificationRequest {
     @Size(max = 200, message = "Nội dung không được vượt quá 200 ký tự")
     private String content;
 
-    @Size(max = 3, message = "Trạng thái đọc không được vượt quá 3 ký tự")
+    @Pattern(regexp = "^(Yes|No)$", message = "Trạng thái đọc phải là 'Yes' hoặc 'No'")
     private String isRead; // "Yes" hoặc "No", mặc định "No"
+
+    @Pattern(regexp = "^(NONE|VIEW_MEAL|VIEW_BOOKING|VIEW_CATEGORY)$", message = "Loại hành động không hợp lệ")
+    private String actionType; // Loại hành động, mặc định "NONE"
+
+    private Integer actionId; // ID liên quan đến hành động, có thể null
 }
