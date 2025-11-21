@@ -85,6 +85,12 @@ public class RoleService implements RoleServiceInterface {
         return mapToRoleDTO(role);
     }
 
+    @Transactional(readOnly = true)
+    public Role getRoleEntityById(Integer roleId) {
+        return roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò với ID: " + roleId));
+    }
+
     @Override
     @Transactional
     public RoleDTO updateRole(Integer roleId, RoleRequest request) {

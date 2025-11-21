@@ -1,5 +1,6 @@
 package com.example.j2ee_project.service.user;
 
+import com.example.j2ee_project.entity.Role;
 import com.example.j2ee_project.model.dto.UserDTO;
 import com.example.j2ee_project.model.request.user.UserRequest;
 import com.example.j2ee_project.entity.Status;
@@ -9,6 +10,7 @@ import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.repository.UserRepository;
 import com.example.j2ee_project.repository.StatusRepository;
 import com.example.j2ee_project.service.role.RoleService;
+import com.example.j2ee_project.utils._enum.EPermission;
 import com.example.j2ee_project.utils._enum.EStatus;
 
 import java.math.BigDecimal;
@@ -20,10 +22,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.example.j2ee_project.utils.role_permission.RolePermissionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
+import com.example.j2ee_project.exception.ForbiddenException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -40,14 +44,16 @@ public class UserService implements UserDetailsService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final RoleService roleService;
     private final StatusRepository statusRepository;
+    private final RolePermissionUtils rolePermissionUtils;
 
     @Autowired
     public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, RoleService roleService,
-            StatusRepository statusRepository) {
+            StatusRepository statusRepository, RolePermissionUtils rolePermissionUtils) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.roleService = roleService;
         this.statusRepository = statusRepository;
+        this.rolePermissionUtils =  rolePermissionUtils;
     }
 
     public UserDTO createUser(UserRequest userRequest) throws DuplicateResourceException {
@@ -106,7 +112,10 @@ public class UserService implements UserDetailsService {
                 roleId = 1; // fallback USER
             }
         }
-        user.setRoleId(roleId);
+
+        // Lấy Role từ database và set vào user
+        Role role = roleService.getRoleEntityById(roleId);
+        user.setRole(role);
 
         if (userRequest.getJoinDate() != null) {
             user.setJoinDate(userRequest.getJoinDate());
@@ -139,7 +148,7 @@ public class UserService implements UserDetailsService {
         }
 
         // Kiểm tra email xác minh cho Google
-        if (provider.equals("Google")) {
+        if (provider.equalsIgnoreCase("Google")) {
             Boolean emailVerified = oAuth2User.getAttribute("email_verified");
             if (emailVerified == null || !emailVerified) {
                 throw new RuntimeException("Email chưa được xác minh. Vui lòng xác minh email trong tài khoản Google của bạn.");
@@ -163,14 +172,17 @@ public class UserService implements UserDetailsService {
                     newUser.setEmail(email);
                     newUser.setUsername(email); // Dùng email làm username
                     newUser.setFullName(name != null ? name : provider + " User");
-                    newUser.setPassword(null); // Không cần password cho Google, Facebook user
+                    newUser.setPhoneNumber(null); // Không có số điện thoại từ OAuth2, set rỗng
+                    newUser.setPassword(null); // Không có mật khẩu
                     newUser.setJoinDate(LocalDateTime.now());
                     newUser.setTotalSpent(BigDecimal.valueOf(0.0));
                     newUser.setLoyaltyPoints(0);
                     newUser.setStatusWork(null);
                     newUser.setCreatedAt(LocalDateTime.now());
                     newUser.setUpdatedAt(LocalDateTime.now());
-                    newUser.setRoleId(1); // Default USER role
+                    // Set Role object thay vì roleId
+                    Role defaultRole = roleService.getRoleEntityById(1); // Default USER role
+                    newUser.setRole(defaultRole);
                     newUser.setStatus(statusRepository.findById(EStatus.UNVERIFIED.getCode())
                             .orElseThrow(() -> new RuntimeException("Không tìm thấy status Unverified")));
                     return userRepository.save(newUser);
@@ -178,9 +190,15 @@ public class UserService implements UserDetailsService {
     }
 
     // Hàm lấy danh sách người dùng kèm phân trang và lọc
-    public Map<String, Object> getUsersPaginated(int offset, int limit,
+    public Map<String, Object> getUsersPaginated(String token, int offset, int limit,
             String username, String search,
             Integer statusId, Integer roleId) {
+
+        // === KIỂM TRA QUYỀN TẠI ĐÂY ===
+        if (!rolePermissionUtils.hasPermission(token, EPermission.VIEW_USER.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem danh sách người dùng");
+        }
+
         Pageable pageable = PageRequest.of(offset / limit, limit);
         Page<User> page = userRepository.findUsersFiltered(username, search, statusId, roleId, pageable);
 
@@ -196,13 +214,49 @@ public class UserService implements UserDetailsService {
         return response;
     }
 
-    public UserDTO getUserById(Integer userId) {
+    public UserDTO getUserById(String token, Integer userId) {
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+
+        // Nếu là xem chính mình → cho phép luôn
+        if (currentUserId != null && currentUserId.equals(userId)) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+            return mapToUserDTO(user);
+        }
+
+        // Xem người khác → phải có quyền VIEW_USER
+        if (!rolePermissionUtils.hasPermission(token, EPermission.VIEW_USER.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem thông tin người dùng khác");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
         return mapToUserDTO(user);
     }
 
-    public UserDTO getUserByUsername(String username) {
+    /**
+     * Lấy profile của chính người dùng hiện tại
+     * → Luôn cho phép, không cần quyền VIEW_USER
+     */
+    public UserDTO getMyProfile(String token) {
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+
+        if (currentUserId == null) {
+            throw new ForbiddenException("Token không hợp lệ hoặc đã hết hạn");
+        }
+
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+
+        return mapToUserDTO(user);
+    }
+
+    public UserDTO getUserByUsername(String token,  String username) {
+
+        if (!rolePermissionUtils.hasPermission(token, EPermission.VIEW_USER.getCode())) {
+            throw new ForbiddenException("Bạn không có quyềnxem thông tin người dùng");
+        }
+
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy người dùng với tên đăng nhập: " + username));
@@ -216,7 +270,16 @@ public class UserService implements UserDetailsService {
         return mapToUserDTO(user);
     }
 
-    public UserDTO updateUser(Integer userId, UserDTO userDTO) {
+    public UserDTO updateUser(String token,  Integer userId, UserDTO userDTO) {
+        Integer currentUserId = rolePermissionUtils.getUserIdFromToken(token);
+
+        // Nếu là cập nhật chính mình → cho phép luôn, không cần quyền UPDATE_USER
+        boolean isSelfUpdate = currentUserId != null && currentUserId.equals(userId);
+
+        if (!isSelfUpdate && !rolePermissionUtils.hasPermission(token, EPermission.UPDATE_USER.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền cập nhật người dùng");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
 
@@ -242,8 +305,10 @@ public class UserService implements UserDetailsService {
             user.setFullName(userDTO.getFullName());
         if (userDTO.getPhoneNumber() != null)
             user.setPhoneNumber(userDTO.getPhoneNumber());
-        if (userDTO.getRoleId() != null)
-            user.setRoleId(userDTO.getRoleId());
+        if (userDTO.getRoleId() != null) {
+            Role role = roleService.getRoleEntityById(userDTO.getRoleId());
+            user.setRole(role);
+        }
         if (userDTO.getStatusId() != null)
             user.setStatus(status);
         if (userDTO.getStatusWork() != null)
@@ -259,21 +324,25 @@ public class UserService implements UserDetailsService {
         return mapToUserDTO(user);
     }
 
-    public void deleteUser(Integer userId) {
+    public void deleteUser(String token, Integer userId) {
+        if (!rolePermissionUtils.hasPermission(token, EPermission.DELETE_USER.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xóa người dùng");
+        }
+
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId);
         }
         userRepository.deleteById(userId);
     }
 
-    private UserDTO mapToUserDTO(User user) {
+    public UserDTO mapToUserDTO(User user) {
         UserDTO.UserDTOBuilder builder = UserDTO.builder()
                 .userId(user.getUserID())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
-                .roleId(user.getRoleId())
+                .roleId(user.getRole() != null ? user.getRole().getRoleID() : null)
                 .statusId(user.getStatus().getStatusID())
                 .statusWork(user.getStatusWork())
                 .totalSpent(user.getTotalSpent())
@@ -297,8 +366,8 @@ public class UserService implements UserDetailsService {
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
 
         try {
-            if (user.getRoleId() != null) {
-                String roleName = roleService.getRoleNameByRoleId(user.getRoleId());
+            if (user.getRole() != null) {
+                String roleName = user.getRole().getRoleName();
                 if (roleName != null && !roleName.equals("UNKNOWN") && !roleName.equals("ERROR")) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
                 }

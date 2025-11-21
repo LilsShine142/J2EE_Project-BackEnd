@@ -15,7 +15,15 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import com.example.j2ee_project.entity.Log;
+import com.example.j2ee_project.model.dto.EmailHistoryDTO;
+import com.example.j2ee_project.repository.LogRepository;
+
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -26,6 +34,7 @@ public class EmailService implements EmailServiceInterface {
     private final JavaMailSender mailSender;
     private final UserRepository userRepository;
     private final LogServiceInterface logService;
+    private final LogRepository logRepository;
 
     // Role IDs constants
     private static final Integer CUSTOMER_ROLE_ID = 1;
@@ -116,10 +125,6 @@ public class EmailService implements EmailServiceInterface {
             }
         }
     }
-
-    // ============================================
-    // PHƯƠNG THỨC GỬI EMAIL CHO TỪNG CHỨC NĂNG CỤ THỂ
-    // ============================================
 
     /**
      * Gửi mã xác nhận cho user mới đăng ký
@@ -276,5 +281,57 @@ public class EmailService implements EmailServiceInterface {
             sb.append(characters.charAt(random.nextInt(characters.length())));
         }
         return sb.toString();
+    }
+
+    /**
+     * Lấy lịch sử gửi email với bộ lọc
+     */
+    @Override
+    public Page<EmailHistoryDTO> getEmailHistory(String token, Integer userId, LocalDateTime startDate, LocalDateTime endDate, String type, int offset, int limit) {
+        // Kiểm tra quyền nếu token != null
+        if (token != null) {
+            // Giả sử cần quyền VIEW_EMAIL_HISTORY hoặc tương tự, nhưng tạm thời bỏ qua hoặc thêm logic
+            // rolePermissionUtils.hasPermission(token, EPermission.VIEW_EMAIL_HISTORY.getCode())
+        }
+
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+        Page<Log> logPage = logRepository.findEmailHistory(userId, startDate, endDate, type, pageable);
+
+        return logPage.map(this::mapLogToEmailHistoryDTO);
+    }
+
+    /**
+     * Map Log to EmailHistoryDTO
+     */
+    private EmailHistoryDTO mapLogToEmailHistoryDTO(Log log) {
+        String title = "Unknown";
+        String content = log.getChangeDetails();
+        String sendType = "USER"; // Default
+
+        // Parse changeDetails to extract title
+        if (log.getChangeDetails() != null) {
+            if (log.getChangeDetails().startsWith("Sent email: ")) {
+                String details = log.getChangeDetails().substring("Sent email: ".length());
+                int toIndex = details.indexOf(" to user ID:");
+                if (toIndex > 0) {
+                    title = details.substring(0, toIndex);
+                    content = "Email sent to user";
+                }
+            } else if (log.getChangeDetails().startsWith("Failed to send email")) {
+                title = "Failed Email";
+                content = log.getChangeDetails();
+            }
+        }
+
+        return EmailHistoryDTO.builder()
+                .id(log.getLogID())
+                .userId(log.getUser() != null ? log.getUser().getUserID() : null)
+                .email(log.getUser() != null ? log.getUser().getEmail() : null)
+                .title(title)
+                .content(content)
+                .sendType(sendType)
+                .sentAt(log.getChangeTime())
+                .status(log.getAction())
+                .build();
     }
 }

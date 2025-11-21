@@ -60,11 +60,23 @@ public class JwtTokenProvider {
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.getSubject(); // Trả về username thay vì parse thành Integer
+        Integer userId = getUserIdFromToken(token);
+        return userRepository.findById(userId)
+                .map(user -> user.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found for id: " + userId));
+    }
+
+    public Integer getUserIdFromToken2(String token) {
+        String email = getEmailFromToken(token);
+        return userRepository.findByEmail(email)
+                .map(user -> user.getUserID())
+                .orElseThrow(() -> new RuntimeException("User not found for email: " + email));
+    }
+
+    public String getEmailFromToken(String token) {
+        Integer userId = getUserIdFromToken(token);
+        return userRepository.findById(userId)
+                .map(user -> user.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found for id: " + userId));
     }
 }

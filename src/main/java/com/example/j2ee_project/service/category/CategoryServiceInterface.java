@@ -5,13 +5,13 @@ import com.example.j2ee_project.model.request.category.CategoryRequest;
 import org.springframework.data.domain.Page;
 
 public interface CategoryServiceInterface {
-    CategoryDTO createCategory(CategoryRequest categoryRequest);
+    CategoryDTO createCategory(String token, CategoryRequest categoryRequest);
 
-    Page<CategoryDTO> getAllCategories(int offset, int limit, String search);
+    Page<CategoryDTO> getAllCategories(String token, int offset, int limit, String search);
 
-    CategoryDTO getCategoryById(Integer categoryId);
+    CategoryDTO getCategoryById(String token, Integer categoryId);
 
-    CategoryDTO updateCategory(Integer categoryId, CategoryRequest categoryRequest);
+    CategoryDTO updateCategory(String token, Integer categoryId, CategoryRequest categoryRequest);
 
-    void deleteCategory(Integer categoryId);
+    void deleteCategory(String token, Integer categoryId);
 }

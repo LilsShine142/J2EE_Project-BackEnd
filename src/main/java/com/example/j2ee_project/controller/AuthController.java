@@ -3,6 +3,7 @@ package com.example.j2ee_project.controller;
 import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.model.dto.UserDTO;
 import com.example.j2ee_project.model.request.auth.LoginRequest;
+import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.repository.UserRepository;
 import com.example.j2ee_project.service.user.UserService;
@@ -28,6 +29,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -80,7 +82,7 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(email, loginRequest.getPassword())
             );
             // Tạo JWT token
-            String token = jwtTokenProvider.generateToken(loginRequest.getEmail());
+            String token = jwtTokenProvider.generateToken(user.getUserID().toString());
 
             // Lấy thông tin user
             UserDTO userDTO = userService.getUserByEmail(loginRequest.getEmail());
@@ -116,41 +118,67 @@ public class AuthController {
     }
 
 
-        @GetMapping("/oauth2/callback/{provider}")
-        public ResponseEntity<?> oauth2Callback(
-                @PathVariable String provider,
-                @RequestParam(required = false) String code,
-                HttpServletRequest request) {
+    @GetMapping("/oauth2/callback/{provider}")
+    public ResponseEntity<ResponseData> oauth2Callback(
+            @PathVariable String provider,
+            @RequestParam(required = false) String code,
+            HttpServletRequest request) {
 
-            if (code == null) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Không có code"));
-            }
-
-            // Spring Security đã xử lý code → Authentication có sẵn
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-            if (!(auth instanceof OAuth2AuthenticationToken token)) {
-                return ResponseEntity.status(401).body(Map.of("message", "Xác thực thất bại"));
-            }
-
-            OAuth2User oAuth2User = token.getPrincipal();
-            User user = userService.processOAuthUser(oAuth2User, provider);
-            String jwt = jwtTokenProvider.generateToken(user.getEmail());
-
-            Map<String, Object> data = Map.of(
-                    "success", true,
-                    "token", jwt,
-                    "user", Map.of(
-                            "userId", user.getUserID(),
-                            "email", user.getEmail(),
-                            "fullName", user.getFullName(),
-                            "phoneNumber", user.getPhoneNumber(),
-                            "roleId", user.getRoleId() != null ? user.getRoleId() : 3
-                    )
-            );
-
-            return ResponseEntity.ok(data);
+        if (code == null || code.isBlank()) {
+            return responseHandler.responseError("Không có code xác thực từ " + provider, HttpStatus.BAD_REQUEST);
         }
+
+        // Lấy Authentication từ Spring Security (đã được xử lý tự động)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(authentication instanceof OAuth2AuthenticationToken token)) {
+            return responseHandler.responseError("Xác thực OAuth2 thất bại", HttpStatus.UNAUTHORIZED);
+        }
+
+        OAuth2User oAuth2User = token.getPrincipal();
+
+        try {
+            // Xử lý user từ Google/Facebook → tạo hoặc lấy user trong DB
+            User user = userService.processOAuthUser(oAuth2User, provider);
+
+            // Tạo JWT token
+            String jwt = jwtTokenProvider.generateToken(user.getUserID().toString());
+
+            // Tạo UserDTO chi tiết giống như login thường
+            Map<String, Object> userData = new HashMap<>();
+            userData.put("userId", user.getUserID());
+            userData.put("username", user.getUsername());
+            userData.put("email", user.getEmail());
+            userData.put("fullName", user.getFullName() != null ? user.getFullName() : "");
+
+            // Chỉ thêm phoneNumber nếu không null và không rỗng
+            if (user.getPhoneNumber() != null && !user.getPhoneNumber().trim().isEmpty()) {
+                userData.put("phoneNumber", user.getPhoneNumber());
+            }
+
+            userData.put("roleId", user.getRole() != null ? user.getRole().getRoleID() : 1); // default USER
+            userData.put("statusId", user.getStatus() != null ? user.getStatus().getStatusID() : null);
+            userData.put("statusWork", user.getStatusWork() != null ? user.getStatusWork() : "");
+            userData.put("totalSpent", user.getTotalSpent() != null ? user.getTotalSpent() : BigDecimal.ZERO);
+            userData.put("loyaltyPoints", user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0);
+            userData.put("joinDate", user.getJoinDate());
+            userData.put("createdAt", user.getCreatedAt());
+            userData.put("updatedAt", user.getUpdatedAt());
+
+            // Tạo data chứa user + token
+            Map<String, Object> responseDataMap = new HashMap<>();
+            responseDataMap.put("user", userData);
+            responseDataMap.put("token", jwt);
+
+            // Trả về đúng format của ResponseHandler
+            return responseHandler.responseSuccess("Đăng nhập thành công với " + provider.toUpperCase(), responseDataMap);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return responseHandler.responseError("Xử lý đăng nhập " + provider + " thất bại: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     @GetMapping("/google/success")
     public ResponseEntity<?> googleLoginSuccess(Authentication authentication) {
@@ -164,18 +192,28 @@ public class AuthController {
             }
             OAuth2User oAuth2User = (OAuth2User) principal;
             User user = userService.processOAuthUser(oAuth2User, "Google");
-            String token = jwtTokenProvider.generateToken(user.getEmail());
+            String token = jwtTokenProvider.generateToken(user.getUserID().toString());
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("user", Map.of(
-                    "userId", user.getUserID(),
-                    "email", user.getEmail(),
-                    "fullName", user.getFullName(),
-                    "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
-                    "roleId", user.getRoleId() != null ? user.getRoleId() : 3
-            ));
+
+            if (user.getPhoneNumber() != null) {
+                responseData.put("user", Map.of(
+                        "userId", user.getUserID(),
+                        "email", user.getEmail(),
+                        "fullName", user.getFullName(),
+                        "phoneNumber", user.getPhoneNumber(),
+                        "roleId", user.getRole() != null ? user.getRole().getRoleID() : 0
+                ));
+            } else {
+                responseData.put("user", Map.of(
+                        "userId", user.getUserID(),
+                        "email", user.getEmail(),
+                        "fullName", user.getFullName(),
+                        "roleId", user.getRole() != null ? user.getRole().getRoleID() : 0
+                ));
+            }
             responseData.put("token", token);
             responseData.put("googleAttributes", oAuth2User.getAttributes());
-            return responseHandler.responseSuccess("Đăng nhập Google thành công", responseData);
+            return responseHandler.responseSuccess("Đăng nhập thành công", Map.of("data", responseData, "token", token));
         } catch (DisabledException e) {
             return responseHandler.responseError("Tài khoản đã bị vô hiệu hóa", HttpStatus.FORBIDDEN);
         } catch (Exception e) {
@@ -205,15 +243,25 @@ public class AuthController {
             }
             OAuth2User oAuth2User = (OAuth2User) principal;
             User user = userService.processOAuthUser(oAuth2User, "Facebook");
-            String token = jwtTokenProvider.generateToken(user.getEmail());
+            String token = jwtTokenProvider.generateToken(user.getUserID().toString());
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("user", Map.of(
-                    "userId", user.getUserID(),
-                    "email", user.getEmail(),
-                    "fullName", user.getFullName(),
-                    "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
-                    "roleId", user.getRoleId() != null ? user.getRoleId() : 3
-            ));
+
+            if (user.getPhoneNumber() != null) {
+                responseData.put("user", Map.of(
+                        "userId", user.getUserID(),
+                        "email", user.getEmail(),
+                        "fullName", user.getFullName(),
+                        "phoneNumber", user.getPhoneNumber(),
+                        "roleId", user.getRole() != null ? user.getRole().getRoleID() : 0
+                ));
+            } else {
+                responseData.put("user", Map.of(
+                        "userId", user.getUserID(),
+                        "email", user.getEmail(),
+                        "fullName", user.getFullName(),
+                        "roleId", user.getRole() != null ? user.getRole().getRoleID() : 0
+                ));
+            }
             responseData.put("token", token);
             responseData.put("facebookAttributes", oAuth2User.getAttributes()); // Trả về toàn bộ dữ liệu từ Facebook
             return responseHandler.responseSuccess("Đăng nhập Facebook thành công", responseData);

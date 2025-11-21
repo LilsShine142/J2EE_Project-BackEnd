@@ -16,9 +16,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByEmail(String email);
 
-    List<User> findByRoleId(Integer roleId);
+    @Query("SELECT u FROM User u WHERE u.role.roleID = :roleId")
+    List<User> findByRoleId(@Param("roleId") Integer roleId);
 
-    @Query("SELECT u FROM User u JOIN Role r ON u.roleId = r.roleID WHERE r.roleName = :roleName")
+    @Query("SELECT u FROM User u WHERE u.role.roleName = :roleName")
     List<User> findByRoleRoleName(@Param("roleName") String roleName);
 
     boolean existsByUsername(String username);
@@ -31,7 +32,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
             "WHERE (:username IS NULL OR u.username LIKE %:username%) " +
             "AND (:search IS NULL OR u.email LIKE %:search% OR u.fullName LIKE %:search%) " +
             "AND (:statusId IS NULL OR u.status.statusID = :statusId) " +
-            "AND (:roleId IS NULL OR u.roleId = :roleId)")
+            "AND (:roleId IS NULL OR u.role.roleID = :roleId)")
     Page<User> findUsersFiltered(
             @Param("username") String username,
             @Param("search") String search,

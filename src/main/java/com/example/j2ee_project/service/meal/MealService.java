@@ -10,6 +10,9 @@ import com.example.j2ee_project.model.request.meal.MealRequestDTO;
 import com.example.j2ee_project.repository.CategoryRepository;
 import com.example.j2ee_project.repository.MealRepository;
 import com.example.j2ee_project.repository.StatusRepository;
+import com.example.j2ee_project.utils._enum.EPermission;
+import com.example.j2ee_project.utils.role_permission.RolePermissionUtils;
+import com.example.j2ee_project.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,10 +32,17 @@ public class MealService implements MealServiceInterface {
     private final MealRepository mealRepository;
     private final CategoryRepository categoryRepository;
     private final StatusRepository statusRepository;
+    private final RolePermissionUtils rolePermissionUtils;
 
     @Override
     @Transactional
-    public MealDTO createMeal(MealRequestDTO mealRequestDTO) {
+    public MealDTO createMeal(String token, MealRequestDTO mealRequestDTO) {
+        if (token == null) {
+            throw new ForbiddenException("Cần đăng nhập để tạo món ăn!");
+        }
+        if (!rolePermissionUtils.hasPermission(token, EPermission.CREATE_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền tạo món ăn!");
+        }
         if (mealRepository.existsByMealName(mealRequestDTO.getMealName())) {
             throw new DuplicateResourceException("Tên món ăn đã tồn tại: " + mealRequestDTO.getMealName());
         }
@@ -59,7 +69,11 @@ public class MealService implements MealServiceInterface {
     }
 
     @Override
-    public Page<MealDTO> getAllMeals(int offset, int limit, String search, Integer statusId, Integer categoryId, Double minPrice, Double maxPrice) {
+    public Page<MealDTO> getAllMeals(String token, int offset, int limit, String search, Integer statusId, Integer categoryId, Double minPrice, Double maxPrice) {
+        if (token != null && !rolePermissionUtils.hasPermission(token, EPermission.VIEW_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem danh sách món ăn!");
+        }
+
         if (offset < 0) offset = 0;
         if (limit <= 0) limit = 10;
         if (limit > 100) limit = 100;
@@ -87,7 +101,10 @@ public class MealService implements MealServiceInterface {
     }
 
     @Override
-    public MealDTO getMealById(Integer mealID) {
+    public MealDTO getMealById(String token, Integer mealID) {
+        if (token != null && !rolePermissionUtils.hasPermission(token, EPermission.VIEW_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem món ăn!");
+        }
         Meal meal = mealRepository.findById(mealID)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + mealID));
         return mapToMealDTO(meal);
@@ -95,7 +112,13 @@ public class MealService implements MealServiceInterface {
 
     @Override
     @Transactional
-    public MealDTO updateMeal(Integer mealID, MealRequestDTO mealRequestDTO) {
+    public MealDTO updateMeal(String token, Integer mealID, MealRequestDTO mealRequestDTO) {
+        if (token == null) {
+            throw new ForbiddenException("Cần đăng nhập để cập nhật món ăn!");
+        }
+        if (!rolePermissionUtils.hasPermission(token, EPermission.UPDATE_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền cập nhật món ăn!");
+        }
         Meal meal = mealRepository.findById(mealID)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + mealID));
 
@@ -134,7 +157,13 @@ public class MealService implements MealServiceInterface {
 
     @Override
     @Transactional
-    public void deleteMeal(Integer mealID) {
+    public void deleteMeal(String token, Integer mealID) {
+        if (token == null) {
+            throw new ForbiddenException("Cần đăng nhập để xóa món ăn!");
+        }
+        if (!rolePermissionUtils.hasPermission(token, EPermission.DELETE_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xóa món ăn!");
+        }
         if (!mealRepository.existsById(mealID)) {
             throw new ResourceNotFoundException("Không tìm thấy món ăn với ID: " + mealID);
         }
@@ -143,10 +172,15 @@ public class MealService implements MealServiceInterface {
 
     @Override
     public Page<MealDTO> getMealsByCategoryId(
+            String token,
             Integer categoryId,
             int offset, int limit,
             String search, Integer statusId,
             Double minPrice, Double maxPrice) {
+
+        if (token != null && !rolePermissionUtils.hasPermission(token, EPermission.VIEW_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem món ăn theo danh mục!");
+        }
 
         // Validate categoryId
         if (categoryId == null) {
@@ -185,7 +219,11 @@ public class MealService implements MealServiceInterface {
     }
 
     @Override
-    public List<MealDTO> getTopPopular(int limit) {
+    public List<MealDTO> getTopPopular(String token, int limit) {
+        if (token != null && !rolePermissionUtils.hasPermission(token, EPermission.VIEW_MEAL.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền xem món ăn phổ biến!");
+        }
+
         if (limit < 1 || limit > 50) limit = 9; // Mặc định 9
 
         Pageable pageable = PageRequest.of(0, limit);

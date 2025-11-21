@@ -25,16 +25,17 @@ public class User {
     @Column(name = "userid")
     private Integer userID;
 
-    @Column(name = "roleid", nullable = false)
-    private Integer roleId;
+    @ManyToOne
+    @JoinColumn(name = "roleid", nullable = false)
+    private Role role;
 
     @Column(name = "email", nullable = false, unique = true, length = 50)
     private String email;
 
-    @Column(name = "username", nullable = false, unique = true, length = 20)
+    @Column(name = "username", nullable = true, unique = true, length = 20)
     private String username;
 
-    @Column(name = "password", nullable = false, length = 255)
+    @Column(name = "password", nullable = true, length = 255)
     private String password;
 
     @Column(name = "verifycode", length = 10)
@@ -50,7 +51,7 @@ public class User {
     @Column(name = "joindate", nullable = false)
     private LocalDateTime joinDate;
 
-    @Column(name = "phonenumber", unique = true, length = 15)
+    @Column(name = "phonenumber", unique = true, length = 15, nullable = true)
     private String phoneNumber;
 
     @Column(name = "totalspent", precision = 10, scale = 2)
