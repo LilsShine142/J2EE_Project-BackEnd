@@ -58,8 +58,7 @@ public class RoleService implements RoleServiceInterface {
                 1,
                 "New Role",
                 "Role " + saved.getRoleName() + " created by user ID " + currentUserId,
-                "No"
-        ));
+                "No", "NONE", null));
 
         return mapToRoleDTO(saved);
     }
@@ -119,8 +118,7 @@ public class RoleService implements RoleServiceInterface {
                 1,
                 "Role Updated",
                 "Role " + updated.getRoleName() + " updated by user ID " + currentUserId,
-                "No"
-        ));
+                "No", "NONE", null));
 
         return mapToRoleDTO(updated);
     }
@@ -149,8 +147,7 @@ public class RoleService implements RoleServiceInterface {
                 1,
                 "Role Deleted",
                 "Role " + role.getRoleName() + " deleted by user ID " + currentUserId,
-                "No"
-        ));
+                "No", "NONE", null));
     }
 
     @Override
@@ -175,8 +172,7 @@ public class RoleService implements RoleServiceInterface {
                 1,
                 "Role Name Retrieved",
                 "Role name " + role.getRoleName() + " retrieved by user ID " + currentUserId,
-                "No"
-        ));
+                "No", "NONE", null));
 
         return role.getRoleName();
     }
@@ -191,16 +187,35 @@ public class RoleService implements RoleServiceInterface {
         return dto;
     }
 
-    private Integer getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//    private Integer getCurrentUserId() {
+//        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        if (principal instanceof UserDetails) {
+//            String username = ((UserDetails) principal).getUsername();
+//            return userRepository.findByUsername(username)
+//                    .map(user -> user.getUserID())
+//                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại"));
+//        }
+//        return userRepository.findById(1)
+//                .map(user -> user.getUserID())
+//                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định"));
+//    }
+// language: java
+private Integer getCurrentUserId() {
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.isAuthenticated()) {
+        Object principal = auth.getPrincipal();
         if (principal instanceof UserDetails) {
             String username = ((UserDetails) principal).getUsername();
             return userRepository.findByUsername(username)
                     .map(user -> user.getUserID())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại"));
         }
-        return userRepository.findById(1)
-                .map(user -> user.getUserID())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định"));
     }
+
+    // Fallback an toàn: tìm bất kỳ user nào có role ADMIN thay vì dùng id cố định
+    return userRepository.findByRoleRoleName("ADMIN").stream()
+            .findFirst()
+            .map(user -> user.getUserID())
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định. Vui lòng tạo user admin trong cơ sở dữ liệu."));
+}
 }

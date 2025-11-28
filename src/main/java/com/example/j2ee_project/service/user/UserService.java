@@ -288,34 +288,36 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
 
-        Status status = statusRepository.findById(userDTO.getStatusId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy trạng thái với ID: " + userDTO.getStatusId()));
-
         if (userDTO.getUsername() != null && !userDTO.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(userDTO.getUsername())) {
-                throw new DuplicateResourceException("Tên đăng nhập đã tồn tại");
+                throw new DuplicateResourceException("Tên đăng nhập '" + userDTO.getUsername() + "' đã tồn tại");
             }
             user.setUsername(userDTO.getUsername());
         }
 
         if (userDTO.getEmail() != null && !userDTO.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(userDTO.getEmail())) {
-                throw new DuplicateResourceException("Email đã tồn tại");
+                throw new DuplicateResourceException("Email '" + userDTO.getEmail() + "' đã tồn tại");
             }
             user.setEmail(userDTO.getEmail());
         }
 
-        if (userDTO.getFullName() != null)
-            user.setFullName(userDTO.getFullName());
-        if (userDTO.getPhoneNumber() != null)
+        if (userDTO.getPhoneNumber() != null && !userDTO.getPhoneNumber().equals(user.getPhoneNumber())) {
+            if (userRepository.existsByPhoneNumber(userDTO.getPhoneNumber())) {
+                throw new DuplicateResourceException("Số điện thoại '" + userDTO.getPhoneNumber() + "' đã tồn tại");
+            }
             user.setPhoneNumber(userDTO.getPhoneNumber());
+        }
         if (userDTO.getRoleId() != null) {
             Role role = roleService.getRoleEntityById(userDTO.getRoleId());
             user.setRole(role);
         }
-        if (userDTO.getStatusId() != null)
+        if (userDTO.getStatusId() != null) {
+            Status status = statusRepository.findById(userDTO.getStatusId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy trạng thái với ID: " + userDTO.getStatusId()));
             user.setStatus(status);
+        }
         if (userDTO.getStatusWork() != null)
             user.setStatusWork(userDTO.getStatusWork());
         if (userDTO.getTotalSpent() != null)

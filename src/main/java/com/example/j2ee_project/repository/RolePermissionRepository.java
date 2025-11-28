@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface RolePermissionRepository extends JpaRepository<RolePermission, KeyRolePermissionId> {
 
@@ -17,4 +19,6 @@ public interface RolePermissionRepository extends JpaRepository<RolePermission, 
            "LOWER(rp.role.roleName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(rp.permission.permissionName) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<RolePermission> findByFilters(@Param("search") String search, Pageable pageable);
+
+    List<RolePermission> findByRole_RoleID(Integer roleID);
 }

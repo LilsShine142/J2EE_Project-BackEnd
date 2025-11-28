@@ -4,12 +4,15 @@ import com.example.j2ee_project.model.dto.PermissionDTO;
 import com.example.j2ee_project.model.request.permission.PermissionRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.permission.PermissionServiceInterface;
+import com.example.j2ee_project.utils.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/permissions")
@@ -18,11 +21,13 @@ public class PermissionController {
 
     private final PermissionServiceInterface permissionService;
     private final ResponseHandler responseHandler;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    public PermissionController(PermissionServiceInterface permissionService, ResponseHandler responseHandler) {
+    public PermissionController(PermissionServiceInterface permissionService, ResponseHandler responseHandler, JwtTokenProvider jwtTokenProvider) {
         this.permissionService = permissionService;
         this.responseHandler = responseHandler;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping("/create")
@@ -56,5 +61,12 @@ public class PermissionController {
     public ResponseEntity<?> deletePermission(@PathVariable Integer id) {
         permissionService.deletePermission(id);
         return responseHandler.responseSuccess("Xóa quyền thành công", null);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyPermissions(@RequestHeader("Authorization") String token) {
+        Integer userId = jwtTokenProvider.getUserIdFromToken(token.replace("Bearer ", ""));
+        List<PermissionDTO> permissions = permissionService.getPermissionsByUserId(userId);
+        return responseHandler.responseSuccess("Lấy danh sách quyền của bạn thành công", permissions);
     }
 }

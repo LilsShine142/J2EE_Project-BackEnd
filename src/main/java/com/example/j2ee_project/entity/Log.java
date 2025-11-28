@@ -16,7 +16,7 @@ public class Log {
     @Column(name = "tablename", nullable = false, length = 50)
     private String tableName;
 
-    @Column(name = "recordid", nullable = false)
+    @Column(name = "recordid", nullable = true)
     private Integer recordID;
 
     @Column(name = "action", length = 20)

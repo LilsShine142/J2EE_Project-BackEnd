@@ -1,9 +1,6 @@
 package com.example.j2ee_project.service.permission;
 
-import com.example.j2ee_project.entity.Log;
-import com.example.j2ee_project.entity.Notification;
-import com.example.j2ee_project.entity.Permission;
-import com.example.j2ee_project.entity.User;
+import com.example.j2ee_project.entity.*;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.LogDTO;
 import com.example.j2ee_project.model.dto.NotificationDTO;
@@ -12,6 +9,8 @@ import com.example.j2ee_project.model.request.log.LogRequest;
 import com.example.j2ee_project.model.request.notification.NotificationRequest;
 import com.example.j2ee_project.model.request.permission.PermissionRequest;
 import com.example.j2ee_project.repository.PermissionRepository;
+import com.example.j2ee_project.repository.RolePermissionRepository;
+import com.example.j2ee_project.repository.RoleRepository;
 import com.example.j2ee_project.repository.UserRepository;
 import com.example.j2ee_project.service.log.LogServiceInterface;
 import com.example.j2ee_project.service.notification.NotificationServiceInterface;
@@ -22,12 +21,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class PermissionService implements PermissionServiceInterface {
 
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final RolePermissionRepository rolePermissionRepository;
     private final LogServiceInterface logService;
     private final NotificationServiceInterface notificationService;
 
@@ -48,7 +52,7 @@ public class PermissionService implements PermissionServiceInterface {
 
         // Gửi thông báo cho admin (giả sử admin có userID = 1)
         notificationService.createNotification(new NotificationRequest(1, "New Permission",
-                "Permission " + saved.getPermissionName() + " created", "No"));
+                "Permission " + saved.getPermissionName() + " created", "No", "NONE", null));
 
         return mapToPermissionDTO(saved);
     }
@@ -91,7 +95,7 @@ public class PermissionService implements PermissionServiceInterface {
 
         // Gửi thông báo
         notificationService.createNotification(new NotificationRequest(1, "Permission Updated",
-                "Permission " + updated.getPermissionName() + " updated", "No"));
+                "Permission " + updated.getPermissionName() + " updated", "No", "NONE", null));
 
         return mapToPermissionDTO(updated);
     }
@@ -110,7 +114,22 @@ public class PermissionService implements PermissionServiceInterface {
 
         // Gửi thông báo
         notificationService.createNotification(new NotificationRequest(1, "Permission Deleted",
-                "Permission " + permission.getPermissionName() + " deleted", "No"));
+                "Permission " + permission.getPermissionName() + " deleted", "No", "NONE", null));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PermissionDTO> getPermissionsByUserId(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+
+        Integer roleId = user.getRole().getRoleID();
+
+        List<RolePermission> rolePermissions = rolePermissionRepository.findByRole_RoleID(roleId);
+
+        return rolePermissions.stream()
+                .map(rolePermission -> mapToPermissionDTO(rolePermission.getPermission()))
+                .collect(Collectors.toList());
     }
 
     private PermissionDTO mapToPermissionDTO(Permission permission) {

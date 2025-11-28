@@ -59,7 +59,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
         notificationService.createNotification(new NotificationRequest(request.getGrantedByUserId(),
                 "Permission Granted",
                 "Permission " + permission.getPermissionName() + " granted to role " + role.getRoleName(),
-                "No"));
+                "No", "NONE", null));
 
         return mapToRolePermissionDTO(saved);
     }
@@ -116,7 +116,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
         notificationService.createNotification(new NotificationRequest(request.getGrantedByUserId(),
                 "Permission Updated",
                 "Permission " + newPermission.getPermissionName() + " updated for role " + newRole.getRoleName(),
-                "No"));
+                "No", "NONE", null));
 
         return mapToRolePermissionDTO(updated);
     }
@@ -138,7 +138,7 @@ public class RolePermissionService implements RolePermissionServiceInterface {
         // Gửi thông báo
         notificationService.createNotification(new NotificationRequest(1, "Permission Removed",
                 "Permission " + rolePermission.getPermission().getPermissionName() + " removed from role " + rolePermission.getRole().getRoleName(),
-                "No"));
+                "No", "NONE", null));
     }
 
     private RolePermissionDTO mapToRolePermissionDTO(RolePermission rolePermission) {

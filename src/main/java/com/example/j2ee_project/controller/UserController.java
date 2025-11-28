@@ -1,5 +1,6 @@
 package com.example.j2ee_project.controller;
 
+import com.example.j2ee_project.exception.DuplicateResourceException;
 import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.UserDTO;
@@ -100,6 +101,8 @@ public class UserController {
             return responseHandler.responseError(e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (ResourceNotFoundException e) {
             return responseHandler.handleNotFound(e.getMessage());
+        } catch (DuplicateResourceException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
             return responseHandler.handleServerError("Đã xảy ra lỗi khi cập nhật người dùng");
         }

@@ -79,7 +79,9 @@ public class SecurityConfig {
                                 "/api/meals/popular",
                                 "/api/meals/category/**",
                                 "/api/tabletypes/getall",
-                                "/api/meals/getall"
+                                "/api/meals/getall",
+                                "/api/vouchers/**",
+                                "/api/emails/**"
                         ).permitAll()
                         .requestMatchers("/api/public/**", "/api/payment/callback", "/api/payment/ipn").permitAll()
                         .anyRequest().authenticated()

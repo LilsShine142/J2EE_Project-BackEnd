@@ -77,35 +77,26 @@ public class BillService implements BillServiceInterface {
                     .max(BigDecimal.ZERO);
         }
 
-        BigDecimal initialPayment = totalAmount.multiply(BigDecimal.valueOf(paymentPercentage / 100.0))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal initialPayment = mealTotal;
         BigDecimal remainingAmount = totalAmount.subtract(initialPayment)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        Bill existingBill = billRepository.findByBookingId(booking.getBookingID());
-        Bill bill;
-        if (existingBill != null && existingBill.getStatus().getStatusName().equals(EStatus.FAILED.getName())) {
-            bill = existingBill;
-            bill.setInitialPayment(initialPayment);
-            bill.setTotalAmount(totalAmount);
-            bill.setRemainingAmount(initialPayment);
-            bill.setPaymentMethod("TRANSFER");
-            bill.setStatus(pendingStatus);
-            bill.setUpdatedAt(LocalDateTime.now());
-        } else {
+        Bill bill = billRepository.findByBookingId(booking.getBookingID());
+        if (bill == null) {
             bill = new Bill();
             bill.setUser(booking.getUser());
             bill.setRestaurantTable(booking.getRestaurantTable());
             bill.setBooking(booking);
             bill.setBillDate(LocalDate.now());
-            bill.setInitialPayment(initialPayment);
-            bill.setTotalAmount(totalAmount);
-            bill.setRemainingAmount(initialPayment);
-            bill.setPaymentMethod("TRANSFER");
-            bill.setStatus(pendingStatus);
             bill.setCreatedAt(LocalDateTime.now());
-            bill.setUpdatedAt(LocalDateTime.now());
         }
+        // Update fields
+        bill.setInitialPayment(initialPayment);
+        bill.setTotalAmount(totalAmount);
+        bill.setRemainingAmount(initialPayment);
+        bill.setPaymentMethod("TRANSFER");
+        bill.setStatus(pendingStatus);
+        bill.setUpdatedAt(LocalDateTime.now());
 
         Bill savedBill = billRepository.save(bill);
         return initiatePaymentForBill(savedBill.getBillID(), initialPayment.longValue(), orderInfo, "TRANSFER");
@@ -427,3 +418,4 @@ public class BillService implements BillServiceInterface {
         restaurantTableRepository.save(table);
     }
 }
+

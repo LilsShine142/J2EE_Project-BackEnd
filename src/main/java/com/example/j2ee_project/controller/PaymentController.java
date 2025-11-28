@@ -1,5 +1,7 @@
 package com.example.j2ee_project.controller;
 
+import com.example.j2ee_project.exception.ResourceNotFoundException;
+import com.example.j2ee_project.model.dto.BillDTO;
 import com.example.j2ee_project.model.dto.PaymentDTO;
 import com.example.j2ee_project.model.dto.RefundPaymentDTO;
 import com.example.j2ee_project.model.response.ResponseData;
@@ -7,6 +9,7 @@ import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.bill.BillService;
 import com.example.j2ee_project.service.payment.PaymentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,6 +54,21 @@ public class PaymentController {
             return responseHandler.responseSuccess(response.getMessage(), response.getData());
         } else {
             return responseHandler.responseError(response.getMessage(), org.springframework.http.HttpStatus.valueOf(response.getStatus()));
+        }
+    }
+
+    @GetMapping("/result/{txnRef}")
+    public ResponseEntity<ResponseData> getPaymentResult(@PathVariable String txnRef) {
+        try {
+            Integer billID = Integer.parseInt(txnRef);
+            BillDTO bill = billService.getBillById(billID);
+            return responseHandler.responseSuccess("Lấy kết quả thanh toán thành công", bill);
+        } catch (NumberFormatException e) {
+            return responseHandler.responseError("txnRef không hợp lệ", HttpStatus.BAD_REQUEST);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return responseHandler.responseError("Lỗi khi lấy kết quả thanh toán", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

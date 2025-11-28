@@ -1,11 +1,14 @@
 package com.example.j2ee_project.service.notification;
 
 import com.example.j2ee_project.model.dto.NotificationDTO;
+import com.example.j2ee_project.model.request.notification.BroadcastNotificationRequest;
 import com.example.j2ee_project.model.request.notification.NotificationRequest;
 import org.springframework.data.domain.Page;
 
 public interface NotificationServiceInterface {
     NotificationDTO createNotification(NotificationRequest request);
+
+    void broadcastNotification(BroadcastNotificationRequest request);
 
     Page<NotificationDTO> getAllNotifications(int offset, int limit, String search);
 
@@ -16,4 +19,6 @@ public interface NotificationServiceInterface {
     void deleteNotification(Integer notificationId);
 
     NotificationDTO markAsRead(Integer notificationId);
+
+    Page<NotificationDTO> getNotificationsByUserId(Integer userId, int offset, int limit, String search);
 }

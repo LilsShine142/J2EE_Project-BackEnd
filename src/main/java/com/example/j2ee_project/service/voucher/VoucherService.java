@@ -65,7 +65,7 @@ public class VoucherService implements VoucherServiceInterface {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<VoucherDTO> getAllVouchers(int offset, int limit, String search) {
         Integer currentUserId = getCurrentUserId();
 
@@ -89,7 +89,7 @@ public class VoucherService implements VoucherServiceInterface {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public VoucherDTO getVoucherByCode(String voucherCode) {
         Integer currentUserId = getCurrentUserId();
 
@@ -234,9 +234,10 @@ public class VoucherService implements VoucherServiceInterface {
         Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy voucher với mã: " + voucherCode));
 
-        List<User> customers = userRepository.findByRoleRoleName("CUSTOMER");
-        if (customers.isEmpty()) {
-            throw new ResourceNotFoundException("Không tìm thấy người dùng nào với vai trò CUSTOMER");
+        // Tìm tất cả người dùng có roleId = 1 (theo yêu cầu)
+        List<User> customers = userRepository.findByRoleId(1);
+        if (customers == null || customers.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy người dùng nào có roleId = 1");
         }
 
         for (User customer : customers) {
@@ -270,16 +271,34 @@ public class VoucherService implements VoucherServiceInterface {
         return dto;
     }
 
-    private Integer getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//    private Integer getCurrentUserId() {
+//        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        if (principal instanceof UserDetails) {
+//            String username = ((UserDetails) principal).getUsername();
+//            return userRepository.findByUsername(username)
+//                    .map(User::getUserID)
+//                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại"));
+//        }
+//        return userRepository.findById(1)
+//                .map(User::getUserID)
+//                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định"));
+//    }
+private Integer getCurrentUserId() {
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.isAuthenticated()) {
+        Object principal = auth.getPrincipal();
         if (principal instanceof UserDetails) {
             String username = ((UserDetails) principal).getUsername();
             return userRepository.findByUsername(username)
-                    .map(User::getUserID)
+                    .map(user -> user.getUserID())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại"));
         }
-        return userRepository.findById(1)
-                .map(User::getUserID)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định"));
     }
+
+    // Fallback an toàn: tìm bất kỳ user nào có role ADMIN thay vì dùng id cố định
+    return userRepository.findByRoleRoleName("ADMIN").stream()
+            .findFirst()
+            .map(user -> user.getUserID())
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy admin mặc định. Vui lòng tạo user admin trong cơ sở dữ liệu."));
+}
 }

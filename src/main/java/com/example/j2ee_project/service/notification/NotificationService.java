@@ -5,6 +5,7 @@ import com.example.j2ee_project.entity.User;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.NotificationDTO;
 import com.example.j2ee_project.model.request.log.LogRequest;
+import com.example.j2ee_project.model.request.notification.BroadcastNotificationRequest;
 import com.example.j2ee_project.model.request.notification.NotificationRequest;
 import com.example.j2ee_project.repository.NotificationRepository;
 import com.example.j2ee_project.repository.UserRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -108,6 +110,45 @@ public class NotificationService implements NotificationServiceInterface {
         return mapToNotificationDTO(updated);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<NotificationDTO> getNotificationsByUserId(Integer userId, int offset, int limit, String search) {
+        if (offset < 0) offset = 0;
+        if (limit <= 0) limit = 10;
+        if (limit > 100) limit = 100;
+        if (search == null) search = "";
+
+        Pageable pageable = PageRequest.of(offset / limit, limit);
+        Page<Notification> page = notificationRepository.findByFilters(userId, null, null, null, search, pageable);
+        return page.map(this::mapToNotificationDTO);
+    }
+
+    @Override
+    @Transactional
+    public void broadcastNotification(BroadcastNotificationRequest request) {
+        List<User> users;
+        if (request.getUserIds() == null || request.getUserIds().isEmpty()) {
+            users = userRepository.findAll();
+        } else {
+            users = userRepository.findAllById(request.getUserIds());
+        }
+
+        for (User user : users) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setTitle(request.getTitle());
+            notification.setContent(request.getContent());
+            notification.setSentDate(LocalDateTime.now());
+            notification.setIsRead(ENotificationReadStatus.NO.getCode());
+            notification.setActionType(request.getActionType() != null ? request.getActionType() : ENotificationActionType.NONE.getCode());
+            notification.setActionId(request.getActionId());
+
+            notificationRepository.save(notification);
+        }
+
+        logService.createLog(new LogRequest("notifications", 0, "BROADCAST", "Broadcasted notification to " + users.size() + " users", null));
+    }
+
     private NotificationDTO mapToNotificationDTO(Notification notification) {
         NotificationDTO dto = new NotificationDTO();
         dto.setNotificationID(notification.getNotificationID());
@@ -117,6 +158,9 @@ public class NotificationService implements NotificationServiceInterface {
         dto.setContent(notification.getContent());
         dto.setSentDate(notification.getSentDate());
         dto.setIsRead(notification.getIsRead());
+        dto.setActionType(notification.getActionType());
+        dto.setActionTypeDescription(ENotificationActionType.valueOf(notification.getActionType()).getDescription());
+        dto.setActionId(notification.getActionId());
         return dto;
     }
 }

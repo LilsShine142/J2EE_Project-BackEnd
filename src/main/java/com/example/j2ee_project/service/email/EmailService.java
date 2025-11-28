@@ -139,21 +139,25 @@ public class EmailService implements EmailServiceInterface {
             throw new IllegalArgumentException("Email is required for verification");
         }
         String verificationCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        newUser.setVerifyCode(verificationCode);
-        userRepository.save(newUser);
+
+        // Fetch existing user to avoid nullifying other fields
+        User existingUser = userRepository.findById(newUser.getUserID())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + newUser.getUserID()));
+        existingUser.setVerifyCode(verificationCode);
+        userRepository.save(existingUser);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("Mã xác nhận", verificationCode);
 
-        sendEmail(newUser, "Xác nhận tài khoản",
+        sendEmail(existingUser, "Xác nhận tài khoản",
                 "Mã xác nhận của bạn là: " + verificationCode, variables);
 
         logService.createLog(new LogRequest(
                 "emails",
-                newUser.getUserID(),
+                existingUser.getUserID(),
                 "SEND",
-                "Sent verification email to user ID: " + newUser.getUserID(),
-                newUser.getUserID()
+                "Sent verification email to user ID: " + existingUser.getUserID(),
+                existingUser.getUserID()
         ));
     }
 

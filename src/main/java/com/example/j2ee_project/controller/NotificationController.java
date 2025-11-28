@@ -2,11 +2,13 @@ package com.example.j2ee_project.controller;
 
 import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.model.dto.NotificationDTO;
+import com.example.j2ee_project.model.request.notification.BroadcastNotificationRequest;
 import com.example.j2ee_project.model.request.notification.NotificationRequest;
 import com.example.j2ee_project.model.response.ResponseHandler;
 import com.example.j2ee_project.service.notification.NotificationServiceInterface;
 import com.example.j2ee_project.utils._enum.EPermission;
 import com.example.j2ee_project.utils.role_permission.RolePermissionUtils;
+import com.example.j2ee_project.utils.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +24,15 @@ public class NotificationController {
     private final NotificationServiceInterface notificationService;
     private final ResponseHandler responseHandler;
     private final RolePermissionUtils rolePermissionUtils;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     public NotificationController(NotificationServiceInterface notificationService, ResponseHandler responseHandler,
-                                 RolePermissionUtils rolePermissionUtils) {
+                                 RolePermissionUtils rolePermissionUtils, JwtTokenProvider jwtTokenProvider) {
         this.notificationService = notificationService;
         this.responseHandler = responseHandler;
         this.rolePermissionUtils = rolePermissionUtils;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping("/create")
@@ -98,5 +102,27 @@ public class NotificationController {
         }
         NotificationDTO response = notificationService.markAsRead(id);
         return responseHandler.responseSuccess("Đánh dấu đã đọc thành công", response);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyNotifications(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+        Integer userId = jwtTokenProvider.getUserIdFromToken(token.replace("Bearer ", ""));
+        Page<NotificationDTO> pageResponse = notificationService.getNotificationsByUserId(userId, page * size, size, search);
+        return responseHandler.responseSuccess("Lấy danh sách thông báo của bạn thành công", pageResponse);
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<?> broadcastNotification(
+            @RequestHeader("Authorization") String token,
+            @Valid @RequestBody BroadcastNotificationRequest request) {
+        if (!rolePermissionUtils.hasPermission(token, EPermission.CREATE_NOTIFICATION.getCode())) {
+            throw new ForbiddenException("Bạn không có quyền gửi thông báo hàng loạt!");
+        }
+        notificationService.broadcastNotification(request);
+        return responseHandler.responseSuccess("Gửi thông báo hàng loạt thành công", null);
     }
 }

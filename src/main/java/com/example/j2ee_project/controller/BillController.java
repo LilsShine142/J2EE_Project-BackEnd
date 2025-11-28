@@ -113,6 +113,14 @@ public class BillController {
             @Valid @RequestBody BillForBookingRequestDTO requestDTO) throws Exception {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy booking với ID: " + bookingId));
+
+        // Check booking status: only allow if PENDING (3) or CONFIRMED (4), and not REJECTED (12)
+        if (booking.getStatus().getStatusID() == 12) {
+            throw new IllegalStateException("Không thể tạo hóa đơn cho booking đã bị từ chối");
+        } else if (booking.getStatus().getStatusID() != 3 && booking.getStatus().getStatusID() != 4) {
+            throw new IllegalStateException("Chỉ có thể tạo hóa đơn cho booking với trạng thái PENDING hoặc CONFIRMED");
+        }
+
         String paymentUrl = billService.createPendingBillAndInitiatePayment(booking, BigDecimal.valueOf(requestDTO.getInitialPayment()),
                 requestDTO.getPaymentPercentage(), requestDTO.getVoucherCode(), requestDTO.getOrderInfo());
         return responseHandler.responseSuccess("Tạo hóa đơn tạm thời và khởi tạo thanh toán thành công", paymentUrl);

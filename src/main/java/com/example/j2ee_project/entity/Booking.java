@@ -59,6 +59,6 @@ public class Booking {
     @JoinColumn(name = "statusid", nullable = false)
     private Status status; // FK đến bảng statuses
 
-    @OneToMany(mappedBy = "booking", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "booking", fetch = FetchType.LAZY)
     private List<BookingDetail> bookingDetails;
 }

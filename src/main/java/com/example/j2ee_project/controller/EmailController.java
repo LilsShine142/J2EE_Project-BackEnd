@@ -1,15 +1,23 @@
 package com.example.j2ee_project.controller;
 
 import com.example.j2ee_project.entity.User;
+import com.example.j2ee_project.entity.Status;
+import com.example.j2ee_project.entity.Voucher;
 import com.example.j2ee_project.exception.ForbiddenException;
 import com.example.j2ee_project.exception.ResourceNotFoundException;
 import com.example.j2ee_project.model.dto.EmailHistoryDTO;
 import com.example.j2ee_project.model.request.email.EmailRequest;
 import com.example.j2ee_project.model.request.email.EmailVerificationRequest;
 import com.example.j2ee_project.model.request.email.PasswordResetRequest;
+import com.example.j2ee_project.model.request.log.LogRequest;
 import com.example.j2ee_project.model.response.ResponseData;
 import com.example.j2ee_project.model.response.ResponseHandler;
+import com.example.j2ee_project.repository.StatusRepository;
+import com.example.j2ee_project.repository.UserRepository;
+import com.example.j2ee_project.repository.VoucherRepository;
 import com.example.j2ee_project.service.email.EmailServiceInterface;
+import com.example.j2ee_project.service.log.LogServiceInterface;
+import com.example.j2ee_project.utils._enum.EStatus;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/emails")
@@ -32,12 +41,15 @@ public class EmailController {
 
     private final EmailServiceInterface emailService;
     private final ResponseHandler responseHandler;
+    private final UserRepository userRepository;
+    private final StatusRepository statusRepository;
+    private final LogServiceInterface logService;
+    private final VoucherRepository voucherRepository;
 
     /**
      * Gửi email linh hoạt dựa trên loại gửi (to user, to list, to role)
      */
     @PostMapping("/send")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> sendEmail(@Valid @RequestBody EmailRequest request, BindingResult bindingResult) {
         // Xử lý lỗi validation
         if (bindingResult.hasErrors()) {
@@ -89,7 +101,6 @@ public class EmailController {
      * Gửi mã xác nhận cho user mới (tích hợp với registration flow)
      */
     @PostMapping("/send-verification")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> sendVerificationCode(@Valid @RequestBody EmailVerificationRequest request, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return responseHandler.handleValidationErrors(bindingResult);
@@ -113,7 +124,6 @@ public class EmailController {
      * Gửi mật khẩu tạm thời (tích hợp với password reset flow)
      */
     @PostMapping("/send-password-reset")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> sendRandomPassword(@Valid @RequestBody PasswordResetRequest request, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return responseHandler.handleValidationErrors(bindingResult);
@@ -139,7 +149,6 @@ public class EmailController {
      * Gửi email chào mừng (tích hợp với registration flow)
      */
     @PostMapping("/send-welcome")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ResponseData> sendWelcomeEmail(@Valid @RequestBody EmailVerificationRequest request, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return responseHandler.handleValidationErrors(bindingResult);
@@ -217,5 +226,81 @@ public class EmailController {
             return responseHandler.handleServerError("Lỗi khi lấy chi tiết email: " + e.getMessage());
         }
     }
-}
 
+    /**
+     * Xác thực mã xác nhận
+     */
+    @PostMapping("/verify-code")
+    public ResponseEntity<ResponseData> verifyCode(@Valid @RequestBody Map<String, Object> request) {
+        try {
+            Integer userId = (Integer) request.get("userId");
+            String code = (String) request.get("code");
+
+            if (userId == null || code == null) {
+                return responseHandler.responseError("userId và code là bắt buộc", HttpStatus.BAD_REQUEST);
+            }
+
+            // Find user
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+
+            // Check code
+            if (!code.equals(user.getVerifyCode())) {
+                return responseHandler.responseError("Mã xác nhận không đúng", HttpStatus.BAD_REQUEST);
+            }
+
+            // Update user status to VERIFIED
+            Status verifiedStatus = statusRepository.findByStatusName(EStatus.VERIFIED.getName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy trạng thái VERIFIED"));
+            user.setStatus(verifiedStatus);
+            user.setVerifyCode(null); // Clear the code
+            userRepository.save(user);
+
+            logService.createLog(new LogRequest(
+                    "users",
+                    user.getUserID(),
+                    "VERIFY",
+                    "Verified user account with code: " + code,
+                    user.getUserID()
+            ));
+
+            return responseHandler.responseSuccess("Mã xác nhận hợp lệ, tài khoản đã được xác thực", null);
+
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.responseError(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Lỗi khi xác thực mã: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi voucher đến tất cả khách hàng có roleId = 1
+     */
+    @PostMapping("/send/all-customers/{voucherCode}")
+    public ResponseEntity<ResponseData> sendVoucherToAllCustomers(
+            @PathVariable String voucherCode) {
+        try {
+            Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy voucher với mã: " + voucherCode));
+
+            // Lấy tất cả user có roleId = 1
+            var users = userRepository.findByRoleId(1);
+            if (users == null || users.isEmpty()) {
+                return responseHandler.handleNotFound("Không tìm thấy người dùng có roleId = 1");
+            }
+
+            var userIds = users.stream().map(u -> u.getUserID()).collect(Collectors.toList());
+
+            // Gọi service email để gửi thông báo voucher
+            emailService.sendVoucherNotificationToUsers(userIds, voucherCode, voucher.getDescription());
+
+            return responseHandler.responseSuccess("Email voucher đã được gửi đến tất cả khách hàng roleId=1", null);
+        } catch (ResourceNotFoundException e) {
+            return responseHandler.handleNotFound(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return responseHandler.handleBadRequest(e.getMessage());
+        } catch (Exception e) {
+            return responseHandler.handleServerError("Lỗi khi gửi email voucher: " + e.getMessage());
+        }
+    }
+}
